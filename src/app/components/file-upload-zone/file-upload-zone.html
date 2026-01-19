@@ -1,0 +1,85 @@
+<div class="space-y-4">
+  <!-- Drop Zone -->
+  <div
+    (dragenter)="handleDragIn($event)"
+    (dragleave)="handleDragOut($event)"
+    (dragover)="handleDragOver($event)"
+    (drop)="handleDrop($event)"
+    [class]="'relative rounded-xl border-2 border-dashed transition-all duration-200 flex flex-col items-center justify-center p-8 text-center ' +
+      (isDragging ? 'border-primary bg-primary/5 scale-[1.02]' : 'border-border hover:border-primary/50 hover:bg-secondary/30') +
+      (isMaxFilesReached ? ' opacity-50 pointer-events-none' : '')">
+    
+    <input
+      type="file"
+      id="file-upload"
+      class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+      multiple
+      [accept]="acceptedTypes.join(',')"
+      (change)="handleFileInput($event)"
+      [disabled]="isMaxFilesReached" />
+    
+    <div [class]="'rounded-full p-4 mb-4 transition-colors ' + (isDragging ? 'bg-primary/20' : 'bg-secondary')">
+      <lucide-icon [img]="Upload" class="h-8 w-8 transition-colors" />
+    </div>
+    
+    <p class="text-lg font-medium text-foreground mb-1">
+      {{ isDragging ? 'Drop files here' : 'Drag & drop files here' }}
+    </p>
+    <p class="text-sm text-muted-foreground mb-4">
+      or click to browse from your computer
+    </p>
+    <p class="text-xs text-muted-foreground">
+      Supports PDF, DOC, DOCX, TXT, CSV, XLSX, MD ({{ files.length }}/{{ maxFiles }} files)
+    </p>
+  </div>
+
+  <!-- Files List -->
+  @if (files.length > 0) {
+    <div class="space-y-2">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-medium text-foreground">
+          Uploaded Documents ({{ files.length }})
+        </h3>
+        @if (files.length > 1) {
+          <button
+            type="button"
+            (click)="clearAll()"
+            class="text-xs text-muted-foreground hover:text-red-600 transition-colors px-2 py-1 rounded hover:bg-red-50">
+            Clear all
+          </button>
+        }
+      </div>
+      
+      <div class="grid gap-2 max-h-[240px] overflow-y-auto pr-1">
+        @for (file of files; track file.id) {
+          <div class="group flex items-center gap-3 rounded-lg bg-secondary/50 p-3 transition-colors hover:bg-secondary">
+            <!-- File Icon -->
+            <lucide-icon 
+              [img]="getFileIcon(file.type)" 
+              [class]="'h-5 w-5 ' + getFileIconColor(file.type)">
+            </lucide-icon>
+            
+            <!-- File Info -->
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-foreground truncate">
+                {{ file.name }}
+              </p>
+              <p class="text-xs text-muted-foreground">
+                {{ formatFileSize(file.size) }}
+              </p>
+            </div>
+            
+            <!-- Remove Button -->
+            <button
+              type="button"
+              (click)="removeFile(file.id)"
+              class="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded flex items-center justify-center"
+              [attr.aria-label]="'Remove ' + file.name">
+              <lucide-icon [img]="X" class="h-4 w-4"></lucide-icon>
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

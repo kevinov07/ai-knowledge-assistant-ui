@@ -3,11 +3,12 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "dev": "ng serve",
     "build": "ng build",
+    "build:ssr": "ng build --ssr",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "serve:ssr:ai-knowledge-assistant-ui": "node dist/ai-knowledge-assistant-ui/server/server.mjs"
+    "serve:ssr": "node dist/ai-knowledge-assistant-ui/server/server.mjs"
   },
   "prettier": {
     "printWidth": 100,
@@ -22,7 +23,7 @@
     ]
   },
   "private": true,
-  "packageManager": "npm@10.9.2",
+  "packageManager": "bun@1.1.0",
   "dependencies": {
     "@angular/common": "^21.0.0",
     "@angular/compiler": "^21.0.0",
@@ -32,8 +33,13 @@
     "@angular/platform-server": "^21.0.0",
     "@angular/router": "^21.0.0",
     "@angular/ssr": "^21.0.0",
+    "@tailwindcss/postcss": "^4.1.18",
+    "clsx": "^2.1.1",
     "express": "^5.1.0",
+    "lucide-angular": "^0.562.0",
+    "postcss": "^8.5.6",
     "rxjs": "~7.8.0",
+    "tailwindcss": "^4.1.18",
     "tslib": "^2.3.0"
   },
   "devDependencies": {

@@ -1,0 +1,115 @@
+<div class="flex flex-col h-full">
+  <!-- Messages Area -->
+  <div class="flex-1 overflow-y-auto p-4 space-y-4">
+    @if (messages.length === 0) {
+      <!-- Empty State -->
+      <div class="flex flex-col items-center justify-center h-full text-center px-4">
+        <div class="rounded-full bg-primary/10 p-4 mb-4">
+          <lucide-icon [img]="Sparkles" class="h-8 w-8 text-primary" />
+
+        </div>
+        <h3 class="text-lg font-semibold text-foreground mb-2">
+          Ask questions about your documents
+        </h3>
+        <p class="text-sm text-muted-foreground max-w-sm mb-6">
+          {{ hasFiles 
+            ? 'Your documents are ready. Ask anything about their content.'
+            : 'Upload documents first, then ask questions about them.' }}
+        </p>
+        @if (hasFiles) {
+          <div class="flex flex-wrap gap-2 justify-center">
+            @for (question of suggestedQuestions; track question) {
+              <button
+                type="button"
+                (click)="handleSuggestedQuestion(question)"
+                [disabled]="isLoading"
+                class="px-3 py-2 text-sm rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:opacity-50">
+                {{ question }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+    } @else {
+      <!-- Messages List -->
+      @for (message of messages; track message.id) {
+        <div [class]="'flex gap-3 max-w-[85%] ' + (message.role === 'user' ? 'ml-auto flex-row-reverse' : '')">
+          <!-- Avatar -->
+          <div [class]="'flex-shrink-0 rounded-full p-2 h-9 w-9 flex items-center justify-center ' +
+            (message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground')">
+            @if (message.role === 'user') {
+              <lucide-icon [img]="User" class="h-4 w-4" />
+            } @else {
+              <lucide-icon [img]="Bot" class="h-4 w-4" />
+            }
+          </div>
+          
+          <!-- Message Content -->
+          <div [class]="'rounded-2xl px-4 py-3 ' +
+            (message.role === 'user' 
+              ? 'bg-primary text-primary-foreground rounded-tr-md' 
+              : 'bg-secondary text-secondary-foreground rounded-tl-md')">
+            <p class="text-sm whitespace-pre-wrap leading-relaxed">
+              {{ message.content }}
+            </p>
+            <p [class]="'text-xs mt-2 ' +
+              (message.role === 'user' ? 'text-primary-foreground/60' : 'text-muted-foreground')">
+              {{ formatTime(message.timestamp) }}
+            </p>
+          </div>
+        </div>
+      }
+      
+      <!-- Loading Indicator -->
+      @if (isLoading) {
+        <div class="flex gap-3">
+          <div class="flex-shrink-0 rounded-full p-2 h-9 w-9 flex items-center justify-center bg-secondary text-secondary-foreground">
+            <lucide-icon [img]="Bot" class="h-4 w-4" />
+          </div>
+          <div class="rounded-2xl rounded-tl-md bg-secondary px-4 py-3">
+            <div class="flex items-center gap-2 text-sm text-muted-foreground">
+              <lucide-icon [img]="Loader" class="h-4 w-4 animate-spin" />
+              <span>Analyzing documents...</span>
+            </div>
+          </div>
+        </div>
+      }
+      
+      <div #messagesEnd></div>
+    }
+  </div>
+
+  <!-- Input Area -->
+  <div class="border-t border-border p-4 bg-card/50">
+    <form (submit)="handleSubmit($event)" class="flex gap-3">
+      <div class="flex-1 relative">
+        <textarea
+          #textarea
+          [(ngModel)]="input"
+          name="message"
+          (keydown)="handleKeyDown($event)"
+          (input)="adjustTextareaHeight()"
+          [placeholder]="hasFiles 
+            ? 'Ask a question about your documents...'
+            : 'Upload documents first to start asking questions'"
+          [disabled]="!hasFiles || isLoading"
+          class="w-full min-h-[52px] max-h-[120px] resize-none pr-4 bg-secondary border-0 rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+          rows="1"></textarea>
+      </div>
+      <button
+        type="submit"
+        [disabled]="!input.trim() || !hasFiles || isLoading"
+        class="h-[52px] w-[52px] shrink-0 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors">
+        @if (isLoading) {
+          <lucide-icon [img]="Loader" class="h-5 w-5 animate-spin" />
+        } @else {
+          <lucide-icon [img]="Send" class="h-5 w-5" />
+        }
+        <span class="sr-only">Send message</span>
+      </button>
+    </form>
+    <p class="text-xs text-muted-foreground text-center mt-2">
+      Press Enter to send, Shift + Enter for new line
+    </p>
+  </div>
+</div>
