@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://ai-knowledge-assistant-api-chejc6bdc4hpftbg.eastus2-01.azurewebsites.net/api'
+  apiUrl: process.env['API_URL'] || 'http://127.0.0.1:8000/api'
 };
