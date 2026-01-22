@@ -41,6 +41,9 @@ export class Ask {
     }
   }
 
+  /**
+   * Sube archivos al backend
+   */
   private uploadFilesToBackend(): void {
     const filesToUpload = this.files.map(f => f.file);
     
@@ -50,10 +53,13 @@ export class Ask {
     
     this.apiService.uploadFiles(filesToUpload).subscribe({
       next: (response) => {
+        console.log("respuesta del backend", response);
+        console.log("response.success", response);
+        // if (response.files_uploaded) {
+        //   console.log("entra al if");
+        //   this.uploadedFileIds = response.files_uploaded.map(f => f.id);
+        // }
         console.log('✅ Files uploaded successfully:', response);
-        if (response.file_ids) {
-          this.uploadedFileIds = response.file_ids;
-        }
       },
       error: (error) => {
         console.error('❌ Error uploading files:', error);
@@ -84,33 +90,15 @@ export class Ask {
       uploadedFileIds: this.uploadedFileIds
     });
 
-    // 2. Si hay archivos pero no se han subido, subirlos primero
-    const filesToUpload = this.files.map(f => f.file);
-    
-    if (filesToUpload.length > 0 && this.uploadedFileIds.length === 0) {
-      console.log('📤 Uploading files and asking question...');
-      
-      this.apiService.uploadAndAsk(filesToUpload, content).subscribe({
-        next: (response) => {
-          this.handleBackendResponse(response);
-        },
-        error: (error) => {
-          this.handleBackendError(error);
-        }
-      });
-    } else {
-      // 3. Si los archivos ya están subidos o no hay archivos, solo hacer la pregunta
-      console.log('🔍 Asking question to backend...');
-      
-      this.apiService.askQuestion(content, this.uploadedFileIds).subscribe({
-        next: (response) => {
-          this.handleBackendResponse(response);
-        },
-        error: (error) => {
-          this.handleBackendError(error);
-        }
-      });
-    }
+
+    this.apiService.askQuestion(content).subscribe({
+      next: (response) => {
+        this.handleBackendResponse(response);
+      },
+      error: (error) => {
+        this.handleBackendError(error);
+      }
+    });
   }
 
   private handleBackendResponse(response: any): void {

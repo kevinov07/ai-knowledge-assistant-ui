@@ -2,23 +2,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { QuestionResponse, UploadResponse } from './types';
 
-export interface QuestionRequest {
-  question: string;
-  files?: File[];
-}
-
-export interface QuestionResponse {
-  answer: string;
-  sources?: string[];
-  timestamp?: string;
-}
-
-export interface UploadResponse {
-  success: boolean;
-  message: string;
-  file_ids?: string[];
-}
 
 @Injectable({
   providedIn: 'root'
@@ -33,12 +18,13 @@ export class ApiService {
    */
   askQuestion(question: string, fileIds?: string[]): Observable<QuestionResponse> {
     const body = {
-      question,
-      file_ids: fileIds || []
+      question: question,
+      k: 3
     };
     
     return this.http.post<QuestionResponse>(`${this.apiUrl}/ask`, body);
   }
+
 
   /**
    * Sube archivos al backend
@@ -51,21 +37,6 @@ export class ApiService {
     });
     
     return this.http.post<UploadResponse>(`${this.apiUrl}/upload`, formData);
-  }
-
-  /**
-   * Sube archivos y luego hace una pregunta
-   */
-  uploadAndAsk(files: File[], question: string): Observable<QuestionResponse> {
-    const formData = new FormData();
-    
-    files.forEach((file) => {
-      formData.append('files', file, file.name);
-    });
-    
-    formData.append('question', question);
-    
-    return this.http.post<QuestionResponse>(`${this.apiUrl}/upload-and-ask`, formData);
   }
 
   /**
