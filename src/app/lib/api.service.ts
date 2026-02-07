@@ -17,10 +17,7 @@ export class ApiService {
    * Envía una pregunta al backend
    */
   askQuestion(question: string, fileIds?: string[]): Observable<QuestionResponse> {
-    const body = {
-      question: question,
-      k: 3
-    };
+    const body = {question: question};
     
     return this.http.post<QuestionResponse>(`${this.apiUrl}/ask`, body);
   }
