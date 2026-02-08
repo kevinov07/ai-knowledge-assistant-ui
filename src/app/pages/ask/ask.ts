@@ -1,10 +1,10 @@
-import { Component, ChangeDetectorRef } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FileUploadZone } from '../../components/file-upload-zone/file-upload-zone';
 import { ChatInterface } from '../../components/chat-interface/chat-interface';
 import { LucideAngularModule, Brain, FileStack, Clock, MessageSquare, Zap, Shield } from 'lucide-angular';
 import { FeatureCardComponent } from '../../ui/feature-card/feature-card';
-import { Message, UploadedFile } from '../../lib/types';
+import { Message, FileData } from '../../lib/types';
 import { ApiService } from '../../lib/api.service';
 
 
@@ -14,7 +14,7 @@ import { ApiService } from '../../lib/api.service';
   templateUrl: './ask.html',
   styleUrl: './ask.css',
 })
-export class Ask {
+export class Ask implements OnInit {
   readonly Brain = Brain;
   readonly FileStack = FileStack;
   readonly Clock = Clock;
@@ -22,7 +22,7 @@ export class Ask {
   readonly Zap = Zap;
   readonly Shield = Shield;
 
-  files: UploadedFile[] = [];
+  files: FileData[] = [];
   messages: Message[] = [];
   isLoading = false;
   uploadedFileIds: string[] = []; // IDs de archivos subidos al backend
@@ -32,7 +32,13 @@ export class Ask {
     private apiService: ApiService
   ) {}
 
-  onFilesChange(newFiles: UploadedFile[]): void {
+  ngOnInit(): void {
+    this.apiService.getFiles().subscribe((files) => {
+      this.files = files;
+    });
+  }
+
+  onFilesChange(newFiles: FileData[]): void {
     this.files = newFiles;
     
     // Si se agregan nuevos archivos, subirlos al backend
@@ -42,29 +48,28 @@ export class Ask {
   }
 
   /**
-   * Sube archivos al backend
+   * Sube archivos al backend (solo los que tienen .file; los del fetch no tienen).
    */
   private uploadFilesToBackend(): void {
-    const filesToUpload = this.files.map(f => f.file);
-    
+    const filesToUpload = this.files
+      .filter((f): f is FileData & { file: File } => !!f.file)
+      .map((f) => f.file);
+
     if (filesToUpload.length === 0) return;
 
     console.log('📤 Uploading files to backend:', filesToUpload.map(f => f.name));
     
     this.apiService.uploadFiles(filesToUpload).subscribe({
       next: (response) => {
-        console.log("respuesta del backend", response);
-        console.log("response.success", response);
-        // if (response.files_uploaded) {
-        //   console.log("entra al if");
-        //   this.uploadedFileIds = response.files_uploaded.map(f => f.id);
-        // }
         console.log('✅ Files uploaded successfully:', response);
+        const existingFromServer = this.files.filter((f) => !f.file);
+        this.files = [...existingFromServer, ...response.files_uploaded];
       },
       error: (error) => {
         console.error('❌ Error uploading files:', error);
         // Podrías mostrar un mensaje de error al usuario aquí
-      }
+        this.files = this.files.filter((f) => !f.file);
+      },
     });
   }
 

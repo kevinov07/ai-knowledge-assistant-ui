@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { UploadedFile } from '../../lib/types';
+import { FileData } from '../../lib/types';
 
 import { LucideAngularModule, Upload, FileText, X, File, FileSpreadsheet, FileImage } from "lucide-angular";
 
@@ -10,7 +10,6 @@ import { LucideAngularModule, Upload, FileText, X, File, FileSpreadsheet, FileIm
   templateUrl: './file-upload-zone.html',
 })
 export class FileUploadZone {
-
   readonly Upload = Upload;
   readonly FileText = FileText;
   readonly X = X;
@@ -19,8 +18,8 @@ export class FileUploadZone {
   readonly FileImage = FileImage;
 
 
-  @Input() files: UploadedFile[] = [];
-  @Output() filesChange = new EventEmitter<UploadedFile[]>();
+  @Input() files: FileData[] = [];
+  @Output() filesChange = new EventEmitter<FileData[]>();
   @Input() maxFiles = 10;
   @Input() acceptedTypes = ['.pdf', '.doc', '.docx', '.txt', '.csv', '.xlsx', '.md'];
 
@@ -85,8 +84,8 @@ export class FileUploadZone {
   addFiles(newFiles: File[]): void {
     const remainingSlots = this.maxFiles - this.files.length;
     const filesToAdd = newFiles.slice(0, remainingSlots).map((file) => ({
-      id: `${file.name}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name: file.name,
+      id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      filename: file.name,
       size: file.size,
       type: file.type,
       file,
