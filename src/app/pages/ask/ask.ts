@@ -1,12 +1,11 @@
-import { Component, ChangeDetectorRef, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, ChangeDetectorRef, OnInit, PLATFORM_ID, inject } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FileUploadZone } from '../../components/file-upload-zone/file-upload-zone';
 import { ChatInterface } from '../../components/chat-interface/chat-interface';
 import { LucideAngularModule, Brain, FileStack, Clock, MessageSquare, Zap, Shield } from 'lucide-angular';
 import { FeatureCardComponent } from '../../ui/feature-card/feature-card';
-import { Message, FileData } from '../../lib/types';
+import { Message, FileData, SessionResponse } from '../../lib/types';
 import { ApiService } from '../../lib/api.service';
-
 
 @Component({
   selector: 'app-ask',
@@ -25,17 +24,32 @@ export class Ask implements OnInit {
   files: FileData[] = [];
   messages: Message[] = [];
   isLoading = false;
-  uploadedFileIds: string[] = []; // IDs de archivos subidos al backend
+  uploadedFileIds: string[] = [];
+  sessionId: string | null = null;
 
-  constructor(
-    private cdr: ChangeDetectorRef,
-    private apiService: ApiService
-  ) {}
+  private cdr = inject(ChangeDetectorRef);
+  private apiService = inject(ApiService);
+  private platformId = inject(PLATFORM_ID);
 
   ngOnInit(): void {
     this.apiService.getFiles().subscribe((files) => {
       this.files = files;
     });
+
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    const session_id = localStorage.getItem('session_id');
+    this.sessionId = session_id;
+
+    if (this.sessionId) {
+      console.log('🔍 Getting session from backend:', this.sessionId);
+      this.apiService.getSession(this.sessionId).subscribe((session) => {
+        console.log('✅ Session received:', session);
+        this.sessionId = session.session_id;
+        this.messages = session.messages;
+        this.cdr.detectChanges();
+      });
+    }
   }
 
   onFilesChange(newFiles: FileData[]): void {
@@ -81,10 +95,11 @@ export class Ask implements OnInit {
       id: `user-${Date.now()}`,
       role: 'user',
       content,
-      timestamp: new Date(),
+      created_at: new Date(),
     };
 
     this.messages = [...this.messages, userMessage];
+    console.log('🔍 Messages:', this.messages);
     this.isLoading = true;
     
     console.log('✅ User message added, isLoading set to:', this.isLoading);
@@ -107,13 +122,17 @@ export class Ask implements OnInit {
   }
 
   private handleBackendResponse(response: any): void {
-    console.log('✅ Backend response received:', response);
-    
+    if (isPlatformBrowser(this.platformId) && response.session_id) {
+      
+      localStorage.setItem('session_id', response.session_id);
+    }
+    this.sessionId = response.session_id;
+
     const assistantMessage: Message = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
       content: response.answer || response.content || 'No response from backend',
-      timestamp: new Date(),
+      created_at: new Date(),
     };
     
     this.messages = [...this.messages, assistantMessage];
@@ -130,7 +149,7 @@ export class Ask implements OnInit {
       id: `error-${Date.now()}`,
       role: 'assistant',
       content: `Lo siento, hubo un error al conectar con el backend:\n\n${error.message || 'Error desconocido'}\n\nPor favor, asegúrate de que el servidor backend está ejecutándose en http://localhost:8000`,
-      timestamp: new Date(),
+      created_at: new Date(),
     };
     
     this.messages = [...this.messages, errorMessage];

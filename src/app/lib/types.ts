@@ -2,7 +2,7 @@ export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  timestamp: Date;
+  created_at: Date;
 }
 
 /**
@@ -30,12 +30,16 @@ export interface FileData extends UploadedDocument {
 
 export interface QuestionRequest {
   question: string;
+  session_id?: string | null;
+
 }
 
 export interface QuestionResponse {
+  question: string;
   answer: string;
-  sources?: string[];
-  timestamp?: string;
+  results: string[];
+  context_used: string[];
+  session_id: string;
 }
 
 export interface FailedFile {
@@ -48,4 +52,11 @@ export interface UploadResponse {
   files_uploaded: FileData[];
   failed_files: FailedFile[];
   documents_indexed: number;
+}
+
+export interface SessionResponse {
+  session_id: string;
+  created_at: string;
+  updated_at: string;
+  messages: Message[];
 }
