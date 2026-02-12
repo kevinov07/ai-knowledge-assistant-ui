@@ -1,0 +1,102 @@
+<div class="flex flex-col h-full bg-background">
+  <!-- Collection Header -->
+  <header class="border-b border-border bg-card/50 backdrop-blur-sm shrink-0">
+    <div class="px-4 py-3 lg:px-6">
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          (click)="onBack()"
+          class="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground lg:hidden"
+          aria-label="Back to collections">
+          <lucide-icon [img]="ArrowLeft" class="h-4 w-4" />
+        </button>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold text-foreground truncate">
+              {{ collection.name }}
+            </h1>
+            @if (!collection.is_public) {
+              <span class="inline-flex items-center gap-1 shrink-0 rounded bg-secondary text-secondary-foreground text-xs px-2 py-0.5">
+                <lucide-icon [img]="Lock" class="h-3 w-3" />
+                Private
+              </span>
+            }
+          </div>
+          @if (collection.description) {
+            <p class="text-sm text-muted-foreground truncate">
+              {{ collection.description }}
+            </p>
+          }
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="flex-1 p-4 lg:p-6 overflow-hidden">
+    <div class="grid lg:grid-cols-2 gap-4 lg:gap-6 h-full">
+      <!-- Left Panel - File Upload -->
+      <div class="flex flex-col bg-card rounded-2xl border border-border overflow-hidden max-h-[calc(100vh-100px)]">
+        <div class="p-4 border-b border-border shrink-0">
+          <div class="flex items-center gap-2">
+            <lucide-icon [img]="FileStack" class="h-5 w-5 text-primary" />
+            <h2 class="font-semibold text-foreground">Documents</h2>
+          </div>
+          <p class="text-sm text-muted-foreground mt-1">
+            Upload files to this collection's knowledge base
+          </p>
+        </div>
+        <div class="flex-1 p-4 overflow-y-auto">
+          <app-file-upload-zone
+            [files]="files"
+            (filesChange)="onFilesChange($event)">
+          </app-file-upload-zone>
+
+          @if (files.length === 0) {
+            <div class="mt-8 grid gap-4">
+              <h3 class="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                Features
+              </h3>
+              <div class="grid gap-3">
+                <app-feature-card title="Instant Analysis" description="Get answers in seconds from any document">
+                  <lucide-icon [img]="Zap" class="h-4 w-4" />
+                </app-feature-card>
+                <app-feature-card title="Secure Processing" description="Your documents are processed securely">
+                  <lucide-icon [img]="Shield" class="h-4 w-4" />
+                </app-feature-card>
+                <app-feature-card title="Context Aware" description="AI understands relationships across files">
+                  <lucide-icon [img]="Clock" class="h-4 w-4" />
+                </app-feature-card>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Right Panel - Chat -->
+      <div class="flex flex-col bg-card rounded-2xl border border-border overflow-hidden max-h-[calc(100vh-100px)]">
+        <div class="p-4 border-b border-border shrink-0">
+          <div class="flex items-center gap-2">
+            <lucide-icon [img]="MessageSquare" class="h-5 w-5 text-primary" />
+            <h2 class="font-semibold text-foreground">Chat</h2>
+          </div>
+          <p class="text-sm text-muted-foreground mt-1">
+            @if (files.length > 0) {
+              {{ files.length }} document{{ files.length > 1 ? 's' : '' }} ready for questions
+            } @else {
+              Upload documents to start chatting
+            }
+          </p>
+        </div>
+        <div class="flex-1 overflow-hidden">
+          <app-chat-interface
+            [messages]="messages"
+            [isLoading]="isLoading"
+            [hasFiles]="files.length > 0"
+            (sendMessage)="onSendMessage($event)">
+          </app-chat-interface>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

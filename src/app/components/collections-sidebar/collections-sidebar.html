@@ -1,0 +1,156 @@
+<aside
+  [class]="'flex flex-col border-r border-border bg-card/50 transition-all duration-300 ease-in-out h-full ' + (isCollapsed ? 'w-16' : 'w-72')">
+  <!-- Sidebar Header -->
+  <div class="flex items-center justify-between p-3 border-b border-border">
+    @if (!isCollapsed) {
+      <button
+        type="button"
+        (click)="onGoHome()"
+        class="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-secondary transition-colors">
+        <div class="rounded-lg bg-primary/10 p-1.5">
+          <lucide-icon [img]="Brain" class="h-4 w-4 text-primary" />
+        </div>
+        <span class="text-sm font-semibold text-foreground">Home</span>
+      </button>
+    }
+    <button
+      type="button"
+      (click)="onToggleCollapse()"
+      [class]="'h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors ' + (isCollapsed ? 'mx-auto' : '')"
+      [attr.title]="isCollapsed ? 'Expand' : 'Collapse'"
+      [attr.aria-label]="isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
+      @if (isCollapsed) {
+        <lucide-icon [img]="ChevronRight" class="h-4 w-4" />
+      } @else {
+        <lucide-icon [img]="ChevronLeft" class="h-4 w-4" />
+      }
+    </button>
+  </div>
+
+  <!-- New Collection Button -->
+  <div class="p-3">
+    @if (isCollapsed) {
+      <button
+        type="button"
+        (click)="onCreateCollection()"
+        class="w-full h-9 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+        title="New collection"
+        aria-label="New collection">
+        <lucide-icon [img]="Plus" class="h-4 w-4" />
+      </button>
+    } @else {
+      <button
+        type="button"
+        (click)="onCreateCollection()"
+        class="w-full h-9 flex items-center justify-center gap-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium">
+        <lucide-icon [img]="Plus" class="h-4 w-4" />
+        New Collection
+      </button>
+    }
+  </div>
+
+  <!-- Search -->
+  @if (!isCollapsed) {
+    <div class="px-3 pb-3">
+      <div class="relative ">
+        <lucide-icon [img]="Search" class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          [(ngModel)]="searchQuery"
+          placeholder=" Search collections..."
+          class="h-8 w-full pl-8 pr-3 text-sm bg-secondary border-0 rounded-md focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground" />
+      </div>
+    </div>
+  }
+
+  <!-- Collections List -->
+  <div class="flex-1 overflow-y-auto min-h-0">
+    <div class="p-2 space-y-1">
+      @if (filteredCollections.length === 0) {
+        @if (!isCollapsed) {
+          <div class="text-center py-8 px-4">
+            <lucide-icon [img]="FolderOpen" class="h-8 w-8 text-muted-foreground/40 mx-auto mb-2 block" />
+            <p class="text-sm text-muted-foreground">
+              {{ searchQuery ? 'No collections found' : 'No collections yet' }}
+            </p>
+            <p class="text-xs text-muted-foreground/60 mt-1">
+              {{ searchQuery ? 'Try a different search' : 'Create one to get started' }}
+            </p>
+          </div>
+        }
+      } @else {
+        @for (collection of filteredCollections; track collection.id) {
+          @if (isCollapsed) {
+            <button
+              type="button"
+              (click)="onSelectCollection(collection)"
+              [attr.title]="collection.name + (!collection.is_public ? ' (Private)' : '')"
+              [class]="'w-full flex items-center justify-center rounded-lg p-2 transition-colors ' +
+                (isActive(collection) ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary hover:text-foreground')">
+              @if (!collection.is_public) {
+                <lucide-icon [img]="Lock" class="h-4 w-4" />
+              } @else {
+                <lucide-icon [img]="FolderOpen" class="h-4 w-4" />
+              }
+            </button>
+          } @else {
+            <button
+              type="button"
+              (click)="onSelectCollection(collection)"
+              [class]="'group w-full flex flex-col rounded-lg p-3 transition-colors text-left border ' +
+                (isActive(collection) ? 'bg-primary/10 border-primary/20' : 'hover:bg-secondary border-transparent')">
+              <div class="flex items-center justify-between w-full">
+                <div class="flex items-center gap-2 min-w-0 flex-1">
+                  @if (!collection.is_public) {
+                    <lucide-icon [img]="Lock" [class]="'h-3.5 w-3.5 shrink-0 ' + (isActive(collection) ? 'text-primary' : 'text-muted-foreground')" />
+                  } @else {
+                    <lucide-icon [img]="FolderOpen" [class]="'h-3.5 w-3.5 shrink-0 ' + (isActive(collection) ? 'text-primary' : 'text-muted-foreground')" />
+                  }
+                  <span [class]="'text-sm font-medium truncate ' + (isActive(collection) ? 'text-foreground' : 'text-foreground/80')">
+                    {{ collection.name }}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  (click)="onDeleteCollection($event, collection.id)"
+                  class="h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                  <lucide-icon [img]="Trash2" class="h-3 w-3" />
+                  <span class="sr-only">Delete {{ collection.name }}</span>
+                </button>
+              </div>
+              @if (collection.description) {
+                <p class="text-xs text-muted-foreground mt-1 truncate pl-5.5">
+                  {{ collection.description }}
+                </p>
+              }
+              <div class="flex items-center gap-3 mt-2 pl-5.5">
+                <div class="flex items-center gap-1 text-xs text-muted-foreground">
+                  <lucide-icon [img]="FileText" class="h-3 w-3" />
+                  <span>{{ collection.document_count }}</span>
+                </div>
+                <div class="flex items-center gap-1 text-xs text-muted-foreground">
+                  <lucide-icon [img]="MessageSquare" class="h-3 w-3" />
+                  <span>{{ collection.messages.length }}</span>
+                </div>
+                @if (!collection.is_public) {
+                  <span class="text-[10px] px-1.5 py-0 h-4 rounded bg-secondary text-secondary-foreground inline-flex items-center">
+                    Private
+                  </span>
+                }
+              </div>
+            </button>
+          }
+        }
+      }
+    </div>
+  </div>
+
+  <!-- Sidebar Footer -->
+  @if (!isCollapsed) {
+    <div class="border-t border-border p-3">
+      <p class="text-[11px] text-muted-foreground/60 text-center">
+        {{ collections.length }} collection{{ collections.length !== 1 ? 's' : '' }}
+      </p>
+    </div>
+  }
+</aside>

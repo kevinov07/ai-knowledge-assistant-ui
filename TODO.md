@@ -2,6 +2,9 @@
 
 ## Features Pendientes
 
+
+En el welcome wiew en vez de decir your collections deberia decir algo como popular collections y mostrar solo las publicas con mucha interacción por ejemplo.
+
 ### 🔔 Notificaciones
 
 - [ ] **Sistema de notificaciones toast/alert**

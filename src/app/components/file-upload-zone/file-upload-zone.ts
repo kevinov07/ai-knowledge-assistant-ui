@@ -25,21 +25,36 @@ export class FileUploadZone {
 
   isDragging = false;
 
+  /** type puede ser extensión (docx, pdf) o MIME (application/pdf). */
   getFileIcon(type: string) {
-    if (type.includes('pdf')) return FileText;
-    if (type.includes('spreadsheet') || type.includes('excel') || type.includes('csv'))
+    const t = type.toLowerCase();
+    // PDF
+    if (t === 'pdf' || t.includes('pdf')) return FileText;
+    // Excel/Spreadsheets
+    if (t === 'xlsx' || t === 'xls' || t === 'csv' || t.includes('spreadsheet') || t.includes('excel'))
       return FileSpreadsheet;
-    if (type.includes('image')) return FileImage;
-    if (type.includes('word') || type.includes('document')) return FileText;
+    // Imágenes
+    if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(t) || t.includes('image'))
+      return FileImage;
+    // Word/Documentos
+    if (t === 'doc' || t === 'docx' || t.includes('word') || t.includes('document'))
+      return FileText;
     return File;
   }
 
   getFileIconColor(type: string): string {
-    if (type.includes('pdf')) return 'text-red-400';
-    if (type.includes('spreadsheet') || type.includes('excel') || type.includes('csv'))
+    const t = type.toLowerCase();
+    // PDF - rojo
+    if (t === 'pdf' || t.includes('pdf')) return 'text-red-400';
+    // Excel/Spreadsheets - verde
+    if (t === 'xlsx' || t === 'xls' || t === 'csv' || t.includes('spreadsheet') || t.includes('excel'))
       return 'text-green-400';
-    if (type.includes('image')) return 'text-blue-400';
-    if (type.includes('word') || type.includes('document')) return 'text-blue-400';
+    // Imágenes - azul
+    if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(t) || t.includes('image'))
+      return 'text-blue-400';
+    // Word/Documentos - azul
+    if (t === 'doc' || t === 'docx' || t.includes('word') || t.includes('document'))
+      return 'text-blue-400';
     return 'text-muted-foreground';
   }
 

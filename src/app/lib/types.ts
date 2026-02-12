@@ -31,7 +31,8 @@ export interface FileData extends UploadedDocument {
 export interface QuestionRequest {
   question: string;
   session_id?: string | null;
-
+  /** Número de resultados (k) para búsquedas en colecciones. */
+  k?: number;
 }
 
 export interface QuestionResponse {
@@ -60,3 +61,39 @@ export interface SessionResponse {
   updated_at: string;
   messages: Message[];
 }
+
+/** Reemplaza con tu tipo completo cuando lo pases. */
+export interface CollectionRequest {
+  name: string;
+  description?: string;
+  is_public: boolean;
+  code?: string;
+}
+
+/** Reemplaza con tu tipo completo cuando lo pases. */
+export interface CollectionResponse {
+  id: string;
+  name: string;
+  description?: string;
+  is_public?: boolean;
+  code?: string;
+  document_count: number;
+  messages: Message[];
+  files?: FileData[];
+  created_at?: Date;
+}
+
+export interface UnlockCollectionRequest {
+  code: string;
+}
+
+export interface UnlockCollectionResponse {
+  unlocked: boolean;
+  access_token: string;
+  token_type: string;
+  /** Tiempo de expiración en segundos (viene del backend). */
+  expires_in: number;
+}
+
+/** Alias para uso en componentes (sidebar, collection-view). */
+export type Collection = CollectionResponse;

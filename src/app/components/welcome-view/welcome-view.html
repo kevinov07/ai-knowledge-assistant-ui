@@ -1,0 +1,93 @@
+<div class="flex flex-col items-center justify-center h-full px-4">
+  <div class="max-w-2xl w-full text-center">
+    <!-- Hero -->
+    <div class="mb-10 pt-8">
+      <div class="inline-flex rounded-2xl bg-primary/10 p-4 mb-6">
+        <lucide-icon [img]="Brain" class="h-12 w-12 text-primary" />
+      </div>
+      <h1 class="text-3xl font-bold text-foreground mb-3 text-balance">
+        AI Knowledge Assistant
+      </h1>
+      <p class="text-muted-foreground text-lg max-w-md mx-auto leading-relaxed">
+        Organize your documents into collections, then ask questions and get
+        AI-powered answers.
+      </p>
+    </div>
+
+    <!-- Create New Button (reemplaza por tu app-button cuando lo tengas) -->
+    <button
+      type="button"
+      (click)="onCreateCollection()"
+      class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-6 py-3 text-base font-medium hover:bg-primary/90 transition-colors mb-10">
+      <lucide-icon [img]="Plus" class="h-5 w-5" />
+      Create New Collection
+    </button>
+
+    <!-- Recent Collections -->
+    @if (collections.length > 0) {
+      <div class="text-left">
+        <h2 class="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4 text-center">
+          Your Collections
+        </h2>
+        <div class="grid gap-3 sm:grid-cols-2">
+          @for (collection of collections; track collection.id) {
+            <button
+              type="button"
+              (click)="onSelectCollection(collection)"
+              class="group flex flex-col rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-primary/30 hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  @if (!collection.is_public) {
+                    <lucide-icon [img]="Lock" class="h-4 w-4 text-muted-foreground" />
+                  } @else {
+                    <lucide-icon [img]="FolderOpen" class="h-4 w-4 text-muted-foreground" />
+                  }
+                  <span class="font-medium text-foreground truncate">
+                    {{ collection.name }}
+                  </span>
+                </div>
+                <lucide-icon [img]="ArrowRight" class="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              @if (collection.description) {
+                <p class="text-xs text-muted-foreground mb-3 line-clamp-2">
+                  {{ collection.description }}
+                </p>
+              }
+              <div class="flex items-center gap-3 mt-auto">
+                <div class="flex items-center gap-1 text-xs text-muted-foreground">
+                  <lucide-icon [img]="FileText" class="h-3 w-3" />
+                  <span>
+                    {{ collection.document_count }} doc
+                    {{ collection.document_count !== 1 ? 's' : '' }}
+                  </span>
+                </div>
+                <div class="flex items-center gap-1 text-xs text-muted-foreground">
+                  <lucide-icon [img]="MessageSquare" class="h-3 w-3" />
+                  <span>
+                    {{ collection.messages.length }} msg
+                    {{ collection.messages.length !== 1 ? 's' : '' }}
+                  </span>
+                </div>
+                @if (!collection.is_public) {
+                  <span class="text-[10px] px-1.5 py-0 h-4 ml-auto rounded bg-secondary text-secondary-foreground inline-flex items-center">
+                    Private
+                  </span>
+                }
+              </div>
+            </button>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Empty State -->
+    @if (collections.length === 0) {
+      <div class="rounded-xl border border-dashed border-border p-8">
+        <lucide-icon [img]="FolderOpen" class="h-10 w-10 text-muted-foreground/30 mx-auto mb-3 block" />
+        <p class="text-sm text-muted-foreground">
+          No collections yet. Create your first one to get started.
+        </p>
+      </div>
+    }
+  </div>
+</div>
