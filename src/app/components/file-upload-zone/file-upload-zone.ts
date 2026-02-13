@@ -20,6 +20,8 @@ export class FileUploadZone {
 
   @Input() files: FileData[] = [];
   @Output() filesChange = new EventEmitter<FileData[]>();
+  /** Se emite cuando se quiere eliminar un documento que ya existe en el backend (sin .file local). */
+  @Output() deleteDocument = new EventEmitter<string>();
   @Input() maxFiles = 10;
   @Input() acceptedTypes = ['.pdf', '.doc', '.docx', '.txt', '.csv', '.xlsx', '.md'];
 
@@ -118,6 +120,12 @@ export class FileUploadZone {
   }
 
   removeFile(id: string): void {
+    const file = this.files.find((f) => f.id === id);
+    if (file && !file.file) {
+      // Es un documento del backend (no tiene .file local) → emitir para eliminar en backend
+      this.deleteDocument.emit(id);
+    }
+    // Siempre actualizamos la lista local
     this.filesChange.emit(this.files.filter((f) => f.id !== id));
   }
 

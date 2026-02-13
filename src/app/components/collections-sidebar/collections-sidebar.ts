@@ -14,13 +14,14 @@ import {
   Trash2,
   Brain,
 } from 'lucide-angular';
-import { Collection } from '../../lib/types';
+import { Collection, PaginationMeta } from '../../lib/types';
 
 @Component({
   selector: 'app-collections-sidebar',
   standalone: true,
   imports: [CommonModule, FormsModule, LucideAngularModule],
   templateUrl: './collections-sidebar.html',
+  host: { class: 'flex h-full min-h-0 overflow-hidden' },
 })
 export class CollectionsSidebar {
   readonly FolderOpen = FolderOpen;
@@ -39,11 +40,13 @@ export class CollectionsSidebar {
   @Input() collections: Collection[] = [];
   @Input() activeCollectionId: string | null = null;
   @Input() isCollapsed = false;
+  @Input() pagination: PaginationMeta | null = null;
   @Output() toggleCollapse = new EventEmitter<void>();
   @Output() selectCollection = new EventEmitter<Collection>();
   @Output() createCollection = new EventEmitter<void>();
   @Output() deleteCollection = new EventEmitter<string>();
   @Output() goHome = new EventEmitter<void>();
+  @Output() pageChange = new EventEmitter<number>();
 
   get filteredCollections(): Collection[] {
     const q = this.searchQuery.toLowerCase().trim();
@@ -76,5 +79,17 @@ export class CollectionsSidebar {
 
   onGoHome(): void {
     this.goHome.emit();
+  }
+
+  goToPrevPage(): void {
+    if (this.pagination && this.pagination.page > 1) {
+      this.pageChange.emit(this.pagination.page - 1);
+    }
+  }
+
+  goToNextPage(): void {
+    if (this.pagination && this.pagination.page < this.pagination.total_pages) {
+      this.pageChange.emit(this.pagination.page + 1);
+    }
   }
 }

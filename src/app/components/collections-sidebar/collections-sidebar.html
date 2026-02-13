@@ -1,14 +1,14 @@
 <aside
-  [class]="'flex flex-col border-r border-border bg-card/50 transition-all duration-300 ease-in-out h-full ' + (isCollapsed ? 'w-16' : 'w-72')">
+  [class]="'flex h-full min-h-0 flex-col border-r border-border bg-card/50 transition-all duration-300 ease-in-out overflow-hidden ' + (isCollapsed ? 'w-16' : 'w-72')">
   <!-- Sidebar Header -->
-  <div class="flex items-center justify-between p-3 border-b border-border">
+  <div class="flex items-center justify-between p-2 border-b border-border">
     @if (!isCollapsed) {
       <button
         type="button"
         (click)="onGoHome()"
-        class="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-secondary transition-colors">
-        <div class="rounded-lg bg-primary/10 p-1.5">
-          <lucide-icon [img]="Brain" class="h-4 w-4 text-primary" />
+        class="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-secondary transition-colors">
+        <div class="rounded-lg bg-primary/10 p-1">
+          <lucide-icon [img]="Brain" class="h-6 w-6 text-primary" />
         </div>
         <span class="text-sm font-semibold text-foreground">Home</span>
       </button>
@@ -16,13 +16,13 @@
     <button
       type="button"
       (click)="onToggleCollapse()"
-      [class]="'h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors ' + (isCollapsed ? 'mx-auto' : '')"
+      [class]="'h-10 w-10 flex py-3 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors ' + (isCollapsed ? 'mx-auto' : '')"
       [attr.title]="isCollapsed ? 'Expand' : 'Collapse'"
       [attr.aria-label]="isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
       @if (isCollapsed) {
-        <lucide-icon [img]="ChevronRight" class="h-4 w-4" />
+        <lucide-icon [img]="ChevronRight" class="h-6 w-6" />
       } @else {
-        <lucide-icon [img]="ChevronLeft" class="h-4 w-4" />
+        <lucide-icon [img]="ChevronLeft" class="h-6 w-6" />
       }
     </button>
   </div>
@@ -63,8 +63,8 @@
     </div>
   }
 
-  <!-- Collections List -->
-  <div class="flex-1 overflow-y-auto min-h-0">
+  <!-- Collections List (scrollable) -->
+  <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
     <div class="p-2 space-y-1">
       @if (filteredCollections.length === 0) {
         @if (!isCollapsed) {
@@ -130,7 +130,7 @@
                 </div>
                 <div class="flex items-center gap-1 text-xs text-muted-foreground">
                   <lucide-icon [img]="MessageSquare" class="h-3 w-3" />
-                  <span>{{ collection.messages.length }}</span>
+                  <span>{{ collection.message_count ?? 0 }}</span>
                 </div>
                 @if (!collection.is_public) {
                   <span class="text-[10px] px-1.5 py-0 h-4 rounded bg-secondary text-secondary-foreground inline-flex items-center">
@@ -147,7 +147,30 @@
 
   <!-- Sidebar Footer -->
   @if (!isCollapsed) {
-    <div class="border-t border-border p-3">
+    <div class="border-t border-border p-3 space-y-2">
+      @if (pagination && pagination.total_pages > 1) {
+        <div class="flex items-center justify-center gap-2 mb-1.5">
+          <button
+            type="button"
+            (click)="goToPrevPage()"
+            [disabled]="pagination.page <= 1"
+            class="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-40 disabled:pointer-events-none"
+            aria-label="Previous page">
+            <lucide-icon [img]="ChevronLeft" class="h-4 w-4" />
+          </button>
+          <span class="text-[11px] text-muted-foreground min-w-[7rem] text-center">
+            {{ pagination.page }} / {{ pagination.total_pages }} ({{ pagination.total }})
+          </span>
+          <button
+            type="button"
+            (click)="goToNextPage()"
+            [disabled]="pagination.page >= pagination.total_pages"
+            class="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-40 disabled:pointer-events-none"
+            aria-label="Next page">
+            <lucide-icon [img]="ChevronRight" class="h-4 w-4" />
+          </button>
+        </div>
+      }
       <p class="text-[11px] text-muted-foreground/60 text-center">
         {{ collections.length }} collection{{ collections.length !== 1 ? 's' : '' }}
       </p>

@@ -1,16 +1,18 @@
-<div class="h-screen flex bg-background overflow-hidden">
+<div class="flex h-screen min-h-0 bg-background overflow-hidden">
   <app-collections-sidebar
     [collections]="collections"
     [activeCollectionId]="activeCollectionId"
     [isCollapsed]="sidebarCollapsed"
+    [pagination]="collectionsPagination"
     (toggleCollapse)="onToggleSidebar()"
     (goHome)="onGoHome()"
     (selectCollection)="onSelectCollection($event)"
     (createCollection)="onCreateCollection()"
-    (deleteCollection)="onDeleteCollection($event)">
+    (deleteCollection)="onDeleteCollection($event)"
+    (pageChange)="onCollectionsPageChange($event)">
   </app-collections-sidebar>
 
-  <div class="flex-1 flex flex-col min-w-0">
+  <div class="flex min-h-0 flex-1 flex-col min-w-0 overflow-y-auto overflow-x-hidden">
     @if (activeCollection) {
       <app-collection-view
         [collection]="activeCollection"
@@ -18,7 +20,8 @@
         (updateCollection)="onUpdateCollection($event)"
         (uploadRequest)="onUploadFiles($event)"
         (sendMessage)="onAskQuestion($event)"
-        (back)="onBack()">
+        (back)="onBack()"
+        (deleteDocument)="onDeleteDocument($event)">
       </app-collection-view>
     } @else {
       <app-welcome-view
@@ -44,5 +47,19 @@
       (submitCode)="onSubmitPrivateCode($event)"
       (clearError)="privateCodeError = null">
     </app-private-code-dialog>
+  }
+
+  @if (collectionToDelete) {
+    <app-confirm-dialog
+      [open]="showDeleteConfirm"
+      [title]="'Delete Collection'"
+      [message]="deleteConfirmMessage"
+      [confirmText]="'Delete'"
+      [cancelText]="'Cancel'"
+      [variant]="'danger'"
+      (openChange)="showDeleteConfirm = $event"
+      (confirm)="onConfirmDelete()"
+      (cancel)="onCancelDelete()">
+    </app-confirm-dialog>
   }
 </div>

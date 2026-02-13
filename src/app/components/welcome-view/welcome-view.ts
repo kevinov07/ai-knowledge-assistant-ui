@@ -22,6 +22,17 @@ export class WelcomeView {
   @Output() selectCollection = new EventEmitter<CollectionResponse>();
   @Output() createCollection = new EventEmitter<void>();
 
+  /** Colecciones ordenadas por popularidad (mensajes + documentos), máximo 6 */
+  get popularCollections(): CollectionResponse[] {
+    return [...this.collections]
+      .sort((a, b) => {
+        const scoreA = (a.message_count ?? 0) + a.document_count;
+        const scoreB = (b.message_count ?? 0) + b.document_count;
+        return scoreB - scoreA; // Orden descendente (más popular primero)
+      })
+      .slice(0, 6); // Limitar a máximo 6 colecciones
+  }
+
   onSelectCollection(collection: CollectionResponse): void {
     this.selectCollection.emit(collection);
   }

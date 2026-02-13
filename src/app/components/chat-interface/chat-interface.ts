@@ -17,10 +17,9 @@ export class ChatInterface implements AfterViewChecked {
   readonly Send = Send;
 
 
-  @Input() 
-  set messages(value: Message[]) {
-    console.log('🔄 ChatInterface received messages:', value.length);
-    this._messages = value;
+  @Input()
+  set messages(value: Message[] | undefined | null) {
+    this._messages = Array.isArray(value) ? value : [];
   }
   get messages(): Message[] {
     return this._messages;
@@ -93,8 +92,8 @@ export class ChatInterface implements AfterViewChecked {
     }
   }
 
-  formatTime(date: Date | string): string {
-    const d = typeof date === 'string' ? new Date(date) : date;
+  formatTime(date: string): string {
+    const d = new Date(date);
     return d.toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',

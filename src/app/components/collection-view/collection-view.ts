@@ -42,13 +42,15 @@ export class CollectionView {
   @Output() uploadRequest = new EventEmitter<File[]>();
   @Output() sendMessage = new EventEmitter<string>();
   @Output() back = new EventEmitter<void>();
+  @Output() deleteDocument = new EventEmitter<string>();
 
   get files(): FileData[] {
     return this.collection.files ?? [];
   }
 
   get messages(): Message[] {
-    return this.collection.messages ?? [];
+    const list = this.collection?.messages;
+    return Array.isArray(list) ? list : [];
   }
 
   onFilesChange(files: FileData[]): void {
@@ -69,5 +71,9 @@ export class CollectionView {
 
   onBack(): void {
     this.back.emit();
+  }
+
+  onDeleteDocument(documentId: string): void {
+    this.deleteDocument.emit(documentId);
   }
 }

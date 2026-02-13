@@ -6,8 +6,9 @@ import { CollectionView } from '../../components/collection-view/collection-view
 import { WelcomeView } from '../../components/welcome-view/welcome-view';
 import { CreateCollectionDialog } from '../../components/create-collection-dialog/create-collection-dialog';
 import { PrivateCodeDialog } from '../../components/private-code-dialog/private-code-dialog';
+import { ConfirmDialog } from '../../components/confirm-dialog/confirm-dialog';
 import { ApiService } from '../../lib/api.service';
-import { CollectionRequest, CollectionResponse, FileData, Message } from '../../lib/types';
+import { CollectionRequest, CollectionResponse, FileData, Message, PaginationMeta } from '../../lib/types';
 
 @Component({
   selector: 'app-ask',
@@ -19,82 +20,68 @@ import { CollectionRequest, CollectionResponse, FileData, Message } from '../../
     WelcomeView,
     CreateCollectionDialog,
     PrivateCodeDialog,
+    ConfirmDialog,
   ],
   templateUrl: './ask.html',
   styleUrl: './ask.css',
+  host: { ngSkipHydration: '' },
 })
 export class Ask implements OnInit {
   collections: CollectionResponse[] = [];
-  /** Archivos y mensajes de la sesión global (cuando no hay colección activa). */
-  files: FileData[] = [];
-  messages: Message[] = [];
   isLoading = false;
-  uploadedFileIds: string[] = [];
-  sessionId: string | null = null;
+
+  /** Paginación de colecciones (sidebar) */
+  collectionsPage = 1;
+  collectionsPageSize = 10;
+  collectionsPagination: PaginationMeta = {
+    page: 1,
+    page_size: 10,
+    total: 0,
+    total_pages: 0,
+  };
 
   private cdr = inject(ChangeDetectorRef);
   private api = inject(ApiService);
   private platformId = inject(PLATFORM_ID);
 
   ngOnInit(): void {
-    this.api.getCollections().subscribe((list) => {
-      this.collections = list;
-      // Restaurar colección activa desde sessionStorage (si existe y sigue disponible)
+    this.loadCollections();
+  }
+
+  /** Carga la página actual de colecciones para el sidebar. */
+  loadCollections(): void {
+    this.api.getCollections(this.collectionsPage, this.collectionsPageSize).subscribe((res) => {
+      this.collections = res.items;
+      this.collectionsPagination = res.pagination;
+      // Restaurar colección activa desde sessionStorage (solo si está en la página actual)
       if (isPlatformBrowser(this.platformId)) {
         const savedId = sessionStorage.getItem('active_collection_id');
         if (savedId) {
           const found = this.collections.find((c) => c.id === savedId);
           if (found) {
             this.activeCollectionId = savedId;
-            // Si no es pública, asumimos que ya estaba desbloqueada en esta sesión
             if (!found.is_public) {
               this.unlockedCollectionIds = new Set(this.unlockedCollectionIds).add(savedId);
             }
-            // Cargar siempre el detalle actualizado (documentos, mensajes, etc.)
             this.loadCollectionDetails(savedId);
           } else {
             sessionStorage.removeItem('active_collection_id');
           }
         }
       }
+      this.cdr.detectChanges();
     });
-      // this.api.getFiles().subscribe((files) => {
-      //   this.files = files;
-      // });
-
-    if (!isPlatformBrowser(this.platformId)) return;
-
-    const session_id = localStorage.getItem('session_id');
-    this.sessionId = session_id;
-
-    if (this.sessionId) {
-      this.api.getSession(this.sessionId).subscribe((session) => {
-        this.sessionId = session.session_id;
-        const raw = session.messages ?? [];
-        this.messages = raw.map((m) => {
-          const msg = m as Message;
-          return {
-            ...msg,
-            created_at: msg.created_at instanceof Date ? msg.created_at : new Date(String(msg.created_at)),
-          };
-        }) as Message[];
-        this.cdr.detectChanges();
-      });
-    }
   }
 
-  /** Colección virtual para la vista de sesión (sin colección seleccionada). */
-  get sessionCollection(): CollectionResponse {
-    return {
-      id: 'session',
-      name: 'Chat',
-      document_count: this.files.length,
-      messages: this.messages,
-      files: this.files.length ? this.files : undefined,
-    };
+  onCollectionsPageChange(page: number): void {
+    if (page < 1 || page > this.collectionsPagination.total_pages) return;
+    this.collectionsPage = page;
+    this.loadCollections();
   }
 
   activeCollectionId: string | null = null;
+  /** Datos de la colección activa (se mantienen al cambiar de página en el sidebar). */
+  activeCollectionData: CollectionResponse | null = null;
   sidebarCollapsed = false;
   showCreateDialog = false;
   pendingPrivateCollection: CollectionResponse | null = null;
@@ -102,29 +89,47 @@ export class Ask implements OnInit {
   privateCodeError: string | null = null;
   isUnlocking = false;
 
+  /** Acción pendiente a ejecutar después de desbloquear la colección. */
+  pendingAction: 'enter' | 'delete-collection' | 'delete-document' | null = null;
+  /** ID del documento pendiente a eliminar (solo cuando pendingAction = 'delete-document'). */
+  pendingDocumentId: string | null = null;
+
+  /** Estado del diálogo de confirmación de eliminación. */
+  showDeleteConfirm = false;
+  /** Colección pendiente de eliminar (después de confirmar). */
+  collectionToDelete: CollectionResponse | null = null;
+
+  /** Mensaje de confirmación para eliminar colección. */
+  get deleteConfirmMessage(): string {
+    const name = this.collectionToDelete?.name ?? 'this collection';
+    return `Are you sure you want to delete "${name}"? This action cannot be undone and all documents in this collection will be permanently deleted.`;
+  }
+
   get activeCollection(): CollectionResponse | null {
+    if (this.activeCollectionId && this.activeCollectionData?.id === this.activeCollectionId) {
+      return this.activeCollectionData;
+    }
     return this.collections.find((c) => c.id === this.activeCollectionId) ?? null;
   }
 
   /** Carga detalles frescos de una colección (documentos, mensajes, etc.) desde el backend. */
   private loadCollectionDetails(collectionId: string): void {
-    const base = this.collections.find((c) => c.id === collectionId);
+    const base =
+      this.collections.find((c) => c.id === collectionId) ??
+      (this.activeCollectionId === collectionId ? this.activeCollectionData : null);
     if (!base) return;
 
     const isPublic = base.is_public ?? false;
 
     this.api.getCollectionDocuments(collectionId, isPublic).subscribe((files) => {
       this.api.getCollectionMessages(collectionId, isPublic).subscribe((msgs) => {
-        const normalizedMessages: Message[] = (msgs ?? []).map((m) => ({
-          ...m,
-          created_at: m.created_at instanceof Date ? m.created_at : new Date(String(m.created_at)),
-        }));
-
+        // Los mensajes vienen directamente del backend (created_at como ISO string)
         const updated: CollectionResponse = {
           ...base,
           files,
-          messages: normalizedMessages,
+          messages: msgs,
           document_count: files.length,
+          message_count: msgs.length,
         };
         this.onUpdateCollection(updated);
         this.cdr.detectChanges();
@@ -135,14 +140,15 @@ export class Ask implements OnInit {
   onSelectCollection(collection: CollectionResponse): void {
     if (!collection.is_public && !this.unlockedCollectionIds.has(collection.id)) {
       this.pendingPrivateCollection = collection;
+      this.pendingAction = 'enter';
       this.privateCodeError = null;
       return;
     }
     this.activeCollectionId = collection.id;
+    this.activeCollectionData = collection;
     if (isPlatformBrowser(this.platformId)) {
       sessionStorage.setItem('active_collection_id', collection.id);
     }
-    // Siempre que entramos a una colección, pedimos su detalle actualizado
     this.loadCollectionDetails(collection.id);
   }
 
@@ -155,15 +161,18 @@ export class Ask implements OnInit {
     console.log("entra a crear la colección");
     this.api.createCollection(data).subscribe((response) => {
       this.collections = [response, ...this.collections];
-      console.log(this.collections);
+      this.collectionsPagination = {
+        ...this.collectionsPagination,
+        total: this.collectionsPagination.total + 1,
+      };
       if (data.is_public) {
         this.unlockedCollectionIds = new Set(this.unlockedCollectionIds).add(response.id);
       }
       this.activeCollectionId = response.id;
+      this.activeCollectionData = response;
       if (isPlatformBrowser(this.platformId)) {
         sessionStorage.setItem('active_collection_id', response.id);
       }
-      // Cargamos inmediatamente el detalle de la colección recién creada
       this.loadCollectionDetails(response.id);
       this.cdr.detectChanges();
     });
@@ -172,22 +181,82 @@ export class Ask implements OnInit {
     console.log(this.collections);
   }
 
+  /** Muestra el diálogo de confirmación antes de eliminar una colección. */
   onDeleteCollection(id: string): void {
-    this.collections = this.collections.filter((c) => c.id !== id);
-    if (this.activeCollectionId === id) {
-      this.activeCollectionId = null;
-      if (isPlatformBrowser(this.platformId)) {
-        sessionStorage.removeItem('active_collection_id');
-      }
+    const collection = this.collections.find((c) => c.id === id);
+    if (!collection) return;
+
+    // Mostrar diálogo de confirmación
+    this.collectionToDelete = collection;
+    this.showDeleteConfirm = true;
+  }
+
+  /** Cancela la eliminación de la colección. */
+  onCancelDelete(): void {
+    this.showDeleteConfirm = false;
+    this.collectionToDelete = null;
+  }
+
+  /** Confirma y procede con la eliminación de la colección. */
+  onConfirmDelete(): void {
+    const collection = this.collectionToDelete;
+    if (!collection) return;
+
+    this.showDeleteConfirm = false;
+    this.collectionToDelete = null;
+
+    // Si es privada y no está desbloqueada, pedir código primero
+    if (!collection.is_public && !this.unlockedCollectionIds.has(collection.id)) {
+      this.pendingPrivateCollection = collection;
+      this.pendingAction = 'delete-collection';
+      this.privateCodeError = null;
+      return;
     }
+
+    // Llamar al backend para eliminar
+    this.executeDeleteCollection(collection);
+  }
+
+  /** Ejecuta la eliminación de la colección en el backend. */
+  private executeDeleteCollection(collection: CollectionResponse): void {
+    const isPublic = collection.is_public ?? false;
+    this.api.deleteCollection(collection.id, isPublic).subscribe({
+      next: () => {
+        this.collections = this.collections.filter((c) => c.id !== collection.id);
+        this.collectionsPagination = {
+          ...this.collectionsPagination,
+          total: Math.max(0, this.collectionsPagination.total - 1),
+        };
+        if (this.activeCollectionId === collection.id) {
+          this.activeCollectionId = null;
+          this.activeCollectionData = null;
+          if (isPlatformBrowser(this.platformId)) {
+            sessionStorage.removeItem('active_collection_id');
+          }
+        }
+        // Limpiar el token de esa colección si existe
+        if (isPlatformBrowser(this.platformId)) {
+          sessionStorage.removeItem(`access_token_${collection.id}`);
+        }
+        this.unlockedCollectionIds.delete(collection.id);
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error deleting collection:', err);
+      },
+    });
   }
 
   onUpdateCollection(updated: CollectionResponse): void {
     this.collections = this.collections.map((c) => (c.id === updated.id ? updated : c));
+    if (updated.id === this.activeCollectionId) {
+      this.activeCollectionData = updated;
+    }
   }
 
   onBack(): void {
     this.activeCollectionId = null;
+    this.activeCollectionData = null;
     if (isPlatformBrowser(this.platformId)) {
       sessionStorage.removeItem('active_collection_id');
     }
@@ -195,6 +264,7 @@ export class Ask implements OnInit {
 
   onGoHome(): void {
     this.activeCollectionId = null;
+    this.activeCollectionData = null;
     this.pendingPrivateCollection = null;
     this.privateCodeError = null;
     this.isUnlocking = false;
@@ -203,154 +273,139 @@ export class Ask implements OnInit {
     }
   }
 
-  /** Sube archivos al backend (desde sesión o colección activa). */
+  /** Sube archivos al backend de la colección activa. */
   onUploadFiles(files: File[]): void {
-    console.log(this.activeCollectionId);
     if (files.length === 0) return;
-    const current = this.activeCollection
-    if (current) {
-      const isPublic = current.is_public ?? false;
-      this.api.uploadFiles(files, current.id, isPublic).subscribe({
-        next: (res) => {
-          const currentFiles = current.files ?? [];
-          const withoutTemp = currentFiles.filter((f) => !f.file);
-          const newFiles = [...withoutTemp, ...res.files_uploaded];
-          this.onUpdateCollection({
-            ...current,
-            files: newFiles,
-            document_count: newFiles.length,
-          });
-          this.cdr.detectChanges();
-        },
-        error: () => {
-          const withoutTemp = (current.files ?? []).filter((f) => !f.file);
-          this.onUpdateCollection({
-            ...current,
-            files: withoutTemp,
-            document_count: withoutTemp.length,
-          });
-          this.cdr.detectChanges();
-        },
-      });
-    } else {
-      this.uploadFilesToBackend();
-    }
-  }
-
-  /**
-   * Sube archivos al backend (solo los que tienen .file; los del fetch no tienen).
-   * Usado para la sesión global (sin colección activa).
-   */
-  private uploadFilesToBackend(): void {
-    const filesToUpload = this.files
-      .filter((f): f is FileData & { file: File } => !!f.file)
-      .map((f) => f.file);
-
-    if (filesToUpload.length === 0) return;
-
     const current = this.activeCollection;
-    if (current && current.id) {
-      const isPublic = current.is_public ?? false;
-      this.api.uploadFiles(filesToUpload, current.id, isPublic).subscribe({
-        next: (response) => {
-          const existingFromServer = this.files.filter((f) => !f.file);
-          this.files = [...existingFromServer, ...response.files_uploaded];
-          this.cdr.detectChanges();
-        },
-        error: () => {
-          this.files = this.files.filter((f) => !f.file);
-          this.cdr.detectChanges();
-        },
-      });
-    }
+    if (!current) return;
+
+    const isPublic = current.is_public ?? false;
+    this.api.uploadFiles(files, current.id, isPublic).subscribe({
+      next: (res) => {
+        const currentFiles = current.files ?? [];
+        const withoutTemp = currentFiles.filter((f) => !f.file);
+        const newFiles = [...withoutTemp, ...res.files_uploaded];
+        this.onUpdateCollection({
+          ...current,
+          files: newFiles,
+          document_count: newFiles.length,
+        });
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        const withoutTemp = (current.files ?? []).filter((f) => !f.file);
+        this.onUpdateCollection({
+          ...current,
+          files: withoutTemp,
+          document_count: withoutTemp.length,
+        });
+        this.cdr.detectChanges();
+      },
+    });
   }
 
-  /** Envía pregunta al backend y actualiza mensajes (sesión o colección activa). */
+  /** Envía pregunta al backend y actualiza mensajes de la colección activa. */
   onAskQuestion(content: string): void {
+    const current = this.activeCollection;
+    if (!current) return;
+
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
       content,
-      created_at: new Date(),
+      created_at: new Date().toISOString(),
     };
-    const current = this.activeCollection;
-    if (current) {
-      this.onUpdateCollection({
-        ...current,
-        messages: [...(current.messages ?? []), userMessage],
-      });
-    } else {
-      this.messages = [...this.messages, userMessage];
-    }
+    const updatedMessages = [...(current.messages ?? []), userMessage];
+    this.onUpdateCollection({
+      ...current,
+      messages: updatedMessages,
+      message_count: updatedMessages.length,
+    });
     this.isLoading = true;
     this.cdr.detectChanges();
 
-    const isPublic = current?.is_public ?? false;
-    this.api.askQuestion(content, current?.id, isPublic).subscribe({
+    const isPublic = current.is_public ?? false;
+    this.api.askQuestion(content, current.id, isPublic).subscribe({
       next: (response) => this.handleBackendResponse(response, current),
       error: (error) => this.handleBackendError(error, current),
     });
   }
 
-  private handleBackendResponse(response: { session_id?: string; answer?: string; content?: string }, current: CollectionResponse | null): void {
-    if (isPlatformBrowser(this.platformId) && response.session_id) {
-      localStorage.setItem('session_id', response.session_id);
-    }
-    this.sessionId = response.session_id ?? this.sessionId;
-
+  private handleBackendResponse(response: { answer?: string; content?: string }, current: CollectionResponse): void {
     const assistantMessage: Message = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
       content: response.answer ?? response.content ?? 'No response from backend',
-      created_at: new Date(),
+      created_at: new Date().toISOString(),
     };
 
-    if (current) {
-      const updated = this.collections.find((c) => c.id === current.id);
-      const list = updated ? [...(updated.messages ?? []), assistantMessage] : [assistantMessage];
-      this.onUpdateCollection({
-        ...(updated ?? current),
-        messages: list,
-      });
-    } else {
-      this.messages = [...this.messages, assistantMessage];
-    }
+    const updated = this.collections.find((c) => c.id === current.id);
+    const list = updated ? [...(updated.messages ?? []), assistantMessage] : [assistantMessage];
+    this.onUpdateCollection({
+      ...(updated ?? current),
+      messages: list,
+      message_count: list.length,
+    });
     this.isLoading = false;
     this.cdr.detectChanges();
   }
 
-  private handleBackendError(error: unknown, current: CollectionResponse | null): void {
+  private handleBackendError(error: unknown, current: CollectionResponse): void {
     const errorMessage: Message = {
       id: `error-${Date.now()}`,
       role: 'assistant',
       content: `Lo siento, hubo un error al conectar con el backend:\n\n${error instanceof Error ? error.message : 'Error desconocido'}\n\nPor favor, asegúrate de que el servidor backend está ejecutándose en http://localhost:8000`,
-      created_at: new Date(),
+      created_at: new Date().toISOString(),
     };
 
-    if (current) {
-      const updated = this.collections.find((c) => c.id === current.id);
-      const list = updated ? [...(updated.messages ?? []), errorMessage] : [errorMessage];
-      this.onUpdateCollection({
-        ...(updated ?? current),
-        messages: list,
-      });
-    } else {
-      this.messages = [...this.messages, errorMessage];
-    }
+    const updated = this.collections.find((c) => c.id === current.id);
+    const list = updated ? [...(updated.messages ?? []), errorMessage] : [errorMessage];
+    this.onUpdateCollection({
+      ...(updated ?? current),
+      messages: list,
+      message_count: list.length,
+    });
     this.isLoading = false;
     this.cdr.detectChanges();
   }
 
-  /** Actualiza estado de la sesión cuando se edita desde la vista (sin colección). */
-  onSessionUpdate(updated: CollectionResponse): void {
-    if (updated.id !== 'session') return;
-    this.files = updated.files ?? [];
-    this.messages = updated.messages ?? [];
+  /** Elimina un documento específico de la colección activa. */
+  onDeleteDocument(documentId: string): void {
+    const collection = this.activeCollection;
+    if (!collection) return;
+
+    // Si es privada y no está desbloqueada, pedir código primero
+    if (!collection.is_public && !this.unlockedCollectionIds.has(collection.id)) {
+      this.pendingPrivateCollection = collection;
+      this.pendingAction = 'delete-document';
+      this.pendingDocumentId = documentId;
+      this.privateCodeError = null;
+      return;
+    }
+
+    // Llamar al backend para eliminar el documento
+    const isPublic = collection.is_public ?? false;
+    this.api.deleteDocument(collection.id, documentId, isPublic).subscribe({
+      next: () => {
+        const updatedFiles = (collection.files ?? []).filter((f) => f.id !== documentId);
+        this.onUpdateCollection({
+          ...collection,
+          files: updatedFiles,
+          document_count: updatedFiles.length,
+        });
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error deleting document:', err);
+      },
+    });
   }
 
   onSubmitPrivateCode(code: string): void {
     if (!this.pendingPrivateCollection || this.isUnlocking) return;
     const collection = this.pendingPrivateCollection;
+    const action = this.pendingAction ?? 'enter';
+    const documentId = this.pendingDocumentId;
     this.privateCodeError = null;
     this.isUnlocking = true;
     this.api
@@ -366,14 +421,49 @@ export class Ask implements OnInit {
           if (!this.pendingPrivateCollection || this.pendingPrivateCollection.id !== collection.id) {
             return;
           }
+          // Marcar la colección como desbloqueada
           this.unlockedCollectionIds = new Set(this.unlockedCollectionIds).add(collection.id);
-          this.activeCollectionId = collection.id;
-          if (isPlatformBrowser(this.platformId)) {
-            sessionStorage.setItem('active_collection_id', collection.id);
+
+          // Ejecutar la acción pendiente
+          switch (action) {
+            case 'enter':
+              this.activeCollectionId = collection.id;
+              this.activeCollectionData = collection;
+              if (isPlatformBrowser(this.platformId)) {
+                sessionStorage.setItem('active_collection_id', collection.id);
+              }
+              this.loadCollectionDetails(collection.id);
+              break;
+
+            case 'delete-collection':
+              this.executeDeleteCollection(collection);
+              break;
+
+            case 'delete-document':
+              if (documentId) {
+                this.api.deleteDocument(collection.id, documentId, false).subscribe({
+                  next: () => {
+                    const current = this.collections.find((c) => c.id === collection.id);
+                    if (current) {
+                      const updatedFiles = (current.files ?? []).filter((f) => f.id !== documentId);
+                      this.onUpdateCollection({
+                        ...current,
+                        files: updatedFiles,
+                        document_count: updatedFiles.length,
+                      });
+                    }
+                    this.cdr.detectChanges();
+                  },
+                  error: (err) => console.error('Error deleting document:', err),
+                });
+              }
+              break;
           }
-          // Una vez desbloqueada, cargamos los documentos y mensajes de la colección
-          this.loadCollectionDetails(collection.id);
+
+          // Limpiar estado pendiente
           this.pendingPrivateCollection = null;
+          this.pendingAction = null;
+          this.pendingDocumentId = null;
           this.privateCodeError = null;
         },
         error: (error: any) => {
@@ -392,6 +482,8 @@ export class Ask implements OnInit {
   onPrivateDialogClose(open: boolean): void {
     if (!open) {
       this.pendingPrivateCollection = null;
+      this.pendingAction = null;
+      this.pendingDocumentId = null;
       this.privateCodeError = null;
       this.isUnlocking = false;
     }

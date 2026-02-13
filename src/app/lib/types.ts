@@ -2,17 +2,19 @@ export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  created_at: Date;
+  created_at: string; // ISO string
 }
 
 /**
- * Documento tal como lo devuelve el backend (UploadedDocument en Pydantic).
- * id + filename siempre; size opcional (upload no lo envía, GET /documents sí puede).
+ * Documento tal como lo devuelve el backend (DocumentListItem).
+ * Viene de GET /collections/{id}/documents
  */
 export interface UploadedDocument {
   id: string;
   filename: string;
   size?: number;
+  created_at?: string; // ISO string from backend
+  chunk_count?: number;
 }
 
 /**
@@ -30,7 +32,6 @@ export interface FileData extends UploadedDocument {
 
 export interface QuestionRequest {
   question: string;
-  session_id?: string | null;
   /** Número de resultados (k) para búsquedas en colecciones. */
   k?: number;
 }
@@ -38,9 +39,8 @@ export interface QuestionRequest {
 export interface QuestionResponse {
   question: string;
   answer: string;
-  results: string[];
-  context_used: string[];
-  session_id: string;
+  results?: string[];
+  context_used?: string[];
 }
 
 export interface FailedFile {
@@ -53,13 +53,6 @@ export interface UploadResponse {
   files_uploaded: FileData[];
   failed_files: FailedFile[];
   documents_indexed: number;
-}
-
-export interface SessionResponse {
-  session_id: string;
-  created_at: string;
-  updated_at: string;
-  messages: Message[];
 }
 
 /** Reemplaza con tu tipo completo cuando lo pases. */
@@ -76,9 +69,11 @@ export interface CollectionResponse {
   name: string;
   description?: string;
   is_public?: boolean;
-  code?: string;
   document_count: number;
-  messages: Message[];
+  message_count?: number;
+  /** Mensajes cargados desde GET /collections/{id}/messages (no vienen en el fetch inicial) */
+  messages?: Message[];
+  /** Archivos cargados desde GET /collections/{id}/documents (no vienen en el fetch inicial) */
   files?: FileData[];
   created_at?: Date;
 }
@@ -97,3 +92,17 @@ export interface UnlockCollectionResponse {
 
 /** Alias para uso en componentes (sidebar, collection-view). */
 export type Collection = CollectionResponse;
+
+/** Metadatos de paginación que devuelve el backend */
+export interface PaginationMeta {
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+}
+
+/** Respuesta paginada genérica */
+export interface PaginatedResponse<T> {
+  items: T[];
+  pagination: PaginationMeta;
+}
