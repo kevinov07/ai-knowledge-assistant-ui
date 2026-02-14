@@ -23,11 +23,10 @@
 
   <!-- Contenido principal: en móvil se oculta cuando el sidebar está abierto -->
   <div
-    class="flex min-h-0 flex-1 flex-col min-w-0 overflow-y-auto overflow-x-hidden relative"
+    class="flex min-h-0 flex-1 flex-col min-w-0 overflow-y-auto overflow-x-hidden relative main-content-scroll"
     [class.hidden]="isMobile && !sidebarCollapsed"
-    [class.pt-14]="isMobile && sidebarCollapsed"
-    [class.pl-14]="isMobile && sidebarCollapsed">
-    <!-- Botón menú: solo en móvil cuando el sidebar está cerrado -->
+    [class.pt-14]="isMobile && sidebarCollapsed">
+    <!-- Botón menú: fixed en la esquina; sin pl-14 para que el contenido quede centrado en toda la pantalla -->
     @if (isMobile && sidebarCollapsed) {
       <button
         type="button"
