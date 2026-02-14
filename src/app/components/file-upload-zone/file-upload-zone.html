@@ -51,21 +51,21 @@
       </div>
       
       <div class="grid gap-2 max-h-[240px] overflow-y-auto pr-1">
-        @for (file of files; track file.id) {
+        @for (file of files; track file.id + ':' + $index) {
           <div class="group flex items-center gap-3 rounded-lg bg-secondary/50 p-3 transition-colors hover:bg-secondary">
             <!-- File Icon -->
             <lucide-icon 
-              [img]="getFileIcon(file.type)" 
-              [class]="'h-5 w-5 ' + getFileIconColor(file.type)">
+              [img]="getFileIcon(file.type ?? '')" 
+              [class]="'h-5 w-5 ' + getFileIconColor(file.type ?? '')">
             </lucide-icon>
             
             <!-- File Info -->
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium text-foreground truncate">
-                {{ file.name }}
+                {{ file.filename }}
               </p>
               <p class="text-xs text-muted-foreground">
-                {{ formatFileSize(file.size) }}
+                {{ formatFileSize(file.size ?? 0) }}
               </p>
             </div>
             
@@ -74,7 +74,7 @@
               type="button"
               (click)="removeFile(file.id)"
               class="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded flex items-center justify-center"
-              [attr.aria-label]="'Remove ' + file.name">
+              [attr.aria-label]="'Remove ' + file.filename">
               <lucide-icon [img]="X" class="h-4 w-4"></lucide-icon>
             </button>
           </div>

@@ -2,6 +2,18 @@
 
 ## Features Pendientes
 
+
+En el welcome wiew en vez de decir your collections deberia decir algo como popular collections y mostrar solo las publicas con mucha interacción por ejemplo.
+
+### 🔔 Notificaciones
+
+- [ ] **Sistema de notificaciones toast/alert**
+  - Notificación de éxito al cargar documentos correctamente
+  - Notificación de error cuando falla la carga
+  - Mostrar detalles específicos de los errores (qué documentos fallaron y por qué)
+  - Indicador visual durante el proceso de carga
+  - Lista de documentos procesados con su estado (exitoso/fallido)
+
 ### 📝 Gestión de Documentos
 
 - [ ] **Crear documentos en la app**

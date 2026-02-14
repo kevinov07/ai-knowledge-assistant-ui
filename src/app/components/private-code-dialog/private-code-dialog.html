@@ -1,0 +1,81 @@
+@if (open) {
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="private-dialog-title"
+    aria-describedby="private-dialog-desc">
+    <div class="absolute inset-0 bg-black/50" (click)="handleOpenChange(false)"></div>
+    <div
+      class="relative z-10 w-full max-w-sm rounded-xl border border-border bg-card shadow-lg p-6"
+      (click)="$event.stopPropagation()">
+      <!-- Header (centered) -->
+      <div class="flex flex-col items-center text-center mb-2">
+        <div class="rounded-full bg-primary/10 p-3 mb-2">
+          <lucide-icon [img]="Lock" class="h-6 w-6 text-primary" />
+        </div>
+        <h2 id="private-dialog-title" class="text-lg font-semibold text-foreground">
+          Private Collection
+        </h2>
+        <p id="private-dialog-desc" class="text-sm text-muted-foreground text-balance mt-1">
+          <span class="font-medium text-foreground">{{ collectionName }}</span>
+          is protected. Enter the access code to continue.
+        </p>
+      </div>
+
+      <!-- Input + error -->
+      <div class="py-2">
+        <div [class]="isShaking ? 'animate-[shake_0.5s_ease-in-out]' : ''">
+          <div class="relative">
+            <input
+              [type]="showCode ? 'text' : 'password'"
+              [(ngModel)]="code"
+              (ngModelChange)="onCodeInput()"
+              (keydown)="onKeyDown($event)"
+              placeholder="Enter access code"
+              class="w-full h-9 pl-3 pr-10 rounded-md bg-secondary border-0 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              [class.ring-2]="errorMessage"
+              [class.ring-destructive/50]="errorMessage"
+              autofocus />
+            <button
+              type="button"
+              (click)="toggleShowCode()"
+              class="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground"
+              [attr.aria-label]="showCode ? 'Hide code' : 'Show code'">
+              @if (showCode) {
+                <lucide-icon [img]="EyeOff" class="h-3.5 w-3.5" />
+              } @else {
+                <lucide-icon [img]="Eye" class="h-3.5 w-3.5" />
+              }
+            </button>
+          </div>
+        </div>
+        @if (errorMessage) {
+          <div class="flex items-center gap-1.5 mt-2">
+            <lucide-icon [img]="AlertCircle" class="h-3.5 w-3.5 text-destructive shrink-0" />
+            <p class="text-xs text-destructive">
+              {{ errorMessage }}
+            </p>
+          </div>
+        }
+      </div>
+
+      <!-- Footer -->
+      <div class="flex justify-end gap-2 mt-6">
+        <button
+          type="button"
+          (click)="handleOpenChange(false)"
+          class="px-4 py-2 text-sm rounded-md text-muted-foreground hover:bg-secondary transition-colors">
+          Cancel
+        </button>
+        <button
+          type="button"
+          (click)="onSubmit()"
+          [disabled]="!code.trim() || isLoading"
+          class="px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none transition-colors">
+          {{ isLoading ? 'Checking...' : 'Unlock' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
