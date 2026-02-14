@@ -1,6 +1,7 @@
-import { Component, ChangeDetectorRef, inject, OnInit, PLATFORM_ID } from '@angular/core';
+import { Component, ChangeDetectorRef, HostListener, inject, OnInit, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { finalize } from 'rxjs/operators';
+import { forkJoin } from 'rxjs';
 import { CollectionsSidebar } from '../../components/collections-sidebar/collections-sidebar';
 import { CollectionView } from '../../components/collection-view/collection-view';
 import { WelcomeView } from '../../components/welcome-view/welcome-view';
@@ -45,7 +46,25 @@ export class Ask implements OnInit {
   private platformId = inject(PLATFORM_ID);
 
   ngOnInit(): void {
+    this.updateMobile();
+    if (this.isMobile) this.sidebarCollapsed = true;
     this.loadCollections();
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    this.updateMobile();
+    if (this.isMobile && !this.sidebarCollapsed) {
+      // Al redimensionar a móvil con sidebar abierto, mantener abierto; al pasar a desktop no forzar.
+    }
+    this.cdr.detectChanges();
+  }
+
+  private updateMobile(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const wasMobile = this.isMobile;
+    this.isMobile = window.innerWidth < this.mobileBreakpoint;
+    if (this.isMobile && !wasMobile) this.sidebarCollapsed = true;
   }
 
   /** Carga la página actual de colecciones para el sidebar. */
@@ -60,6 +79,7 @@ export class Ask implements OnInit {
           const found = this.collections.find((c) => c.id === savedId);
           if (found) {
             this.activeCollectionId = savedId;
+            this.activeCollectionData = found;
             if (!found.is_public) {
               this.unlockedCollectionIds = new Set(this.unlockedCollectionIds).add(savedId);
             }
@@ -82,7 +102,10 @@ export class Ask implements OnInit {
   activeCollectionId: string | null = null;
   /** Datos de la colección activa (se mantienen al cambiar de página en el sidebar). */
   activeCollectionData: CollectionResponse | null = null;
+  /** En móvil el sidebar empieza cerrado y al abrirlo ocupa toda la pantalla. */
   sidebarCollapsed = false;
+  isMobile = false;
+  private readonly mobileBreakpoint = 768;
   showCreateDialog = false;
   pendingPrivateCollection: CollectionResponse | null = null;
   unlockedCollectionIds = new Set<string>();
@@ -112,7 +135,7 @@ export class Ask implements OnInit {
     return this.collections.find((c) => c.id === this.activeCollectionId) ?? null;
   }
 
-  /** Carga detalles frescos de una colección (documentos, mensajes, etc.) desde el backend. */
+  /** Carga documentos y mensajes de una colección al entrar en ella. */
   private loadCollectionDetails(collectionId: string): void {
     const base =
       this.collections.find((c) => c.id === collectionId) ??
@@ -121,19 +144,35 @@ export class Ask implements OnInit {
 
     const isPublic = base.is_public ?? false;
 
-    this.api.getCollectionDocuments(collectionId, isPublic).subscribe((files) => {
-      this.api.getCollectionMessages(collectionId, isPublic).subscribe((msgs) => {
-        // Los mensajes vienen directamente del backend (created_at como ISO string)
+    forkJoin({
+      files: this.api.getCollectionDocuments(collectionId, isPublic),
+      messages: this.api.getCollectionMessages(collectionId, isPublic),
+    }).subscribe({
+      next: ({ files, messages: msgs }) => {
+        // Solo aplicar si esta colección sigue siendo la activa (por si el usuario cambió).
+        if (this.activeCollectionId !== collectionId) return;
+
+        const filesList = Array.isArray(files) ? files : [];
+        const msgsList = Array.isArray(msgs) ? msgs : [];
+
         const updated: CollectionResponse = {
           ...base,
-          files,
-          messages: msgs,
-          document_count: files.length,
-          message_count: msgs.length,
+          files: filesList,
+          messages: msgsList,
+          document_count: filesList.length,
+          message_count: msgsList.length,
         };
+        if (filesList.length === 0 && msgsList.length === 0) {
+          updated.document_count = base.document_count ?? 0;
+          updated.message_count = base.message_count ?? 0;
+        }
         this.onUpdateCollection(updated);
         this.cdr.detectChanges();
-      });
+      },
+      error: (err) => {
+        console.error('Error loading collection details:', err);
+        this.cdr.detectChanges();
+      },
     });
   }
 
@@ -149,7 +188,9 @@ export class Ask implements OnInit {
     if (isPlatformBrowser(this.platformId)) {
       sessionStorage.setItem('active_collection_id', collection.id);
     }
+    // Siempre cargar documentos y mensajes al entrar en la colección.
     this.loadCollectionDetails(collection.id);
+    if (this.isMobile) this.sidebarCollapsed = true;
   }
 
   onCreateCollection(): void {
@@ -248,15 +289,25 @@ export class Ask implements OnInit {
   }
 
   onUpdateCollection(updated: CollectionResponse): void {
-    this.collections = this.collections.map((c) => (c.id === updated.id ? updated : c));
-    if (updated.id === this.activeCollectionId) {
-      this.activeCollectionData = updated;
+    // No sustituir conteos positivos por cero (p. ej. detalle devolvió [] al entrar a la colección).
+    const existing = this.collections.find((c) => c.id === updated.id);
+    const incomingZeros = (updated.document_count ?? 0) === 0 && (updated.message_count ?? 0) === 0;
+    const existingHadCounts = (existing?.document_count ?? 0) > 0 || (existing?.message_count ?? 0) > 0;
+    const toApply =
+      incomingZeros && existingHadCounts && existing
+        ? { ...updated, document_count: existing.document_count ?? 0, message_count: existing.message_count ?? 0 }
+        : updated;
+
+    this.collections = this.collections.map((c) => (c.id === toApply.id ? toApply : c));
+    if (toApply.id === this.activeCollectionId) {
+      this.activeCollectionData = toApply;
     }
   }
 
   onBack(): void {
     this.activeCollectionId = null;
     this.activeCollectionData = null;
+    if (this.isMobile) this.sidebarCollapsed = true;
     if (isPlatformBrowser(this.platformId)) {
       sessionStorage.removeItem('active_collection_id');
     }
@@ -268,6 +319,7 @@ export class Ask implements OnInit {
     this.pendingPrivateCollection = null;
     this.privateCodeError = null;
     this.isUnlocking = false;
+    if (this.isMobile) this.sidebarCollapsed = true;
     if (isPlatformBrowser(this.platformId)) {
       sessionStorage.removeItem('active_collection_id');
     }

@@ -1,18 +1,46 @@
-<div class="flex h-screen min-h-0 bg-background overflow-hidden">
-  <app-collections-sidebar
-    [collections]="collections"
-    [activeCollectionId]="activeCollectionId"
-    [isCollapsed]="sidebarCollapsed"
-    [pagination]="collectionsPagination"
-    (toggleCollapse)="onToggleSidebar()"
-    (goHome)="onGoHome()"
-    (selectCollection)="onSelectCollection($event)"
-    (createCollection)="onCreateCollection()"
-    (deleteCollection)="onDeleteCollection($event)"
-    (pageChange)="onCollectionsPageChange($event)">
-  </app-collections-sidebar>
+<div class="flex h-screen min-h-0 bg-background overflow-hidden relative">
+  <!-- Sidebar: en móvil es overlay a pantalla completa; en desktop va al lado -->
+  <div
+    class="flex h-full shrink-0 transition-[transform] duration-300 ease-out z-50 md:z-auto md:transition-none"
+    [class.fixed]="isMobile"
+    [class.inset-0]="isMobile"
+    [class.-translate-x-full]="isMobile && sidebarCollapsed"
+    [class.translate-x-0]="isMobile && !sidebarCollapsed">
+    <app-collections-sidebar
+      [collections]="collections"
+      [activeCollectionId]="activeCollectionId"
+      [isCollapsed]="sidebarCollapsed"
+      [isMobileOverlay]="isMobile && !sidebarCollapsed"
+      [pagination]="collectionsPagination"
+      (toggleCollapse)="onToggleSidebar()"
+      (goHome)="onGoHome()"
+      (selectCollection)="onSelectCollection($event)"
+      (createCollection)="onCreateCollection()"
+      (deleteCollection)="onDeleteCollection($event)"
+      (pageChange)="onCollectionsPageChange($event)">
+    </app-collections-sidebar>
+  </div>
 
-  <div class="flex min-h-0 flex-1 flex-col min-w-0 overflow-y-auto overflow-x-hidden">
+  <!-- Contenido principal: en móvil se oculta cuando el sidebar está abierto -->
+  <div
+    class="flex min-h-0 flex-1 flex-col min-w-0 overflow-y-auto overflow-x-hidden relative"
+    [class.hidden]="isMobile && !sidebarCollapsed"
+    [class.pt-14]="isMobile && sidebarCollapsed"
+    [class.pl-14]="isMobile && sidebarCollapsed">
+    <!-- Botón menú: solo en móvil cuando el sidebar está cerrado -->
+    @if (isMobile && sidebarCollapsed) {
+      <button
+        type="button"
+        (click)="onToggleSidebar()"
+        class="fixed top-3 left-3 z-40 h-10 w-10 flex items-center justify-center rounded-lg bg-card border border-border shadow-md text-muted-foreground hover:text-foreground hover:bg-secondary"
+        aria-label="Open menu">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" y1="12" x2="20" y2="12"/>
+          <line x1="4" y1="6" x2="20" y2="6"/>
+          <line x1="4" y1="18" x2="20" y2="18"/>
+        </svg>
+      </button>
+    }
     @if (activeCollection) {
       <app-collection-view
         [collection]="activeCollection"

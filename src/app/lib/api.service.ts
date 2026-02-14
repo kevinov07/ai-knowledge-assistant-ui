@@ -56,17 +56,21 @@ export class ApiService {
    * Solo envía token si la colección NO es pública.
    */
   getCollectionDocuments(collectionId: string, isPublic?: boolean): Observable<FileData[]> {
-    // Solo enviamos token si la colección NO es pública (token específico de esa colección)
     const token = !isPublic ? this.getAccessToken(collectionId) : null;
     const headers = token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined;
     return this.http
       .get<unknown>(`${this.apiUrl}/collections/${collectionId}/documents`, headers ? { headers } : undefined)
       .pipe(
-        map((list) =>
-          (Array.isArray(list) ? list : []).map((doc, i) =>
+        map((raw) => {
+          const list = Array.isArray(raw)
+            ? raw
+            : (raw && typeof raw === 'object' && (Array.isArray((raw as any).documents)
+                ? (raw as any).documents
+                : Array.isArray((raw as any).items) ? (raw as any).items : Array.isArray((raw as any).data) ? (raw as any).data : []));
+          return (Array.isArray(list) ? list : []).map((doc, i) =>
             this.uploadedDocToFileData(doc as UploadedDocument, i)
-          )
-        )
+          );
+        })
       );
   }
 
@@ -76,13 +80,20 @@ export class ApiService {
    * Solo envía token si la colección NO es pública.
    */
   getCollectionMessages(collectionId: string, isPublic?: boolean): Observable<Message[]> {
-    // Solo enviamos token si la colección NO es pública (token específico de esa colección)
     const token = !isPublic ? this.getAccessToken(collectionId) : null;
     const headers = token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined;
-    return this.http.get<Message[]>(
-      `${this.apiUrl}/collections/${collectionId}/messages`,
-      headers ? { headers } : undefined
-    );
+    return this.http
+      .get<unknown>(`${this.apiUrl}/collections/${collectionId}/messages`, headers ? { headers } : undefined)
+      .pipe(
+        map((raw) => {
+          if (Array.isArray(raw)) return raw as Message[];
+          if (raw && typeof raw === 'object') {
+            const arr = (raw as any).messages ?? (raw as any).items ?? (raw as any).data;
+            return Array.isArray(arr) ? arr : [];
+          }
+          return [];
+        })
+      );
   }
 
   /**

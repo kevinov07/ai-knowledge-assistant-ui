@@ -61,6 +61,7 @@ export class FileUploadZone {
   }
 
   formatFileSize(bytes: number): string {
+    console.log(bytes);
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
