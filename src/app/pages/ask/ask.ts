@@ -354,11 +354,17 @@ export class Ask implements OnInit {
       next: (res) => {
         const currentFiles = current.files ?? [];
         const withoutTemp = currentFiles.filter((f) => !f.file);
-        const newFiles = [...withoutTemp, ...res.files_uploaded];
+        const tempByFilename = new Map(
+          currentFiles.filter((f) => f.file).map((f) => [f.filename, f])
+        );
+        const newFiles = res.files_uploaded.map((doc) => {
+          const size = doc.size != null && doc.size > 0 ? doc.size : (tempByFilename.get(doc.filename)?.size ?? 0);
+          return { ...doc, size };
+        });
         this.onUpdateCollection({
           ...current,
-          files: newFiles,
-          document_count: newFiles.length,
+          files: [...withoutTemp, ...newFiles],
+          document_count: withoutTemp.length + newFiles.length,
         });
         this.cdr.detectChanges();
       },
