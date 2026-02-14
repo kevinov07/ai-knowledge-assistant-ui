@@ -77,7 +77,8 @@ export class ApiService {
   /**
    * Mensajes de una colección específica.
    * GET /collections/{collection_id}/messages
-   * Solo envía token si la colección NO es pública.
+   * El backend devuelve en orden descendente por created_at (más recientes primero) por la paginación.
+   * Aquí invertimos el array para que en la UI se muestren en orden cronológico (más antiguos primero).
    */
   getCollectionMessages(collectionId: string, isPublic?: boolean): Observable<Message[]> {
     const token = !isPublic ? this.getAccessToken(collectionId) : null;
@@ -86,12 +87,13 @@ export class ApiService {
       .get<unknown>(`${this.apiUrl}/collections/${collectionId}/messages`, headers ? { headers } : undefined)
       .pipe(
         map((raw) => {
-          if (Array.isArray(raw)) return raw as Message[];
-          if (raw && typeof raw === 'object') {
-            const arr = (raw as any).messages ?? (raw as any).items ?? (raw as any).data;
-            return Array.isArray(arr) ? arr : [];
+          let arr: Message[] = [];
+          if (Array.isArray(raw)) arr = raw as Message[];
+          else if (raw && typeof raw === 'object') {
+            const list = (raw as any).messages ?? (raw as any).items ?? (raw as any).data;
+            arr = Array.isArray(list) ? list : [];
           }
-          return [];
+          return arr.slice().reverse();
         })
       );
   }
