@@ -10,6 +10,7 @@ import { PrivateCodeDialog } from '../../components/private-code-dialog/private-
 import { ConfirmDialog } from '../../components/confirm-dialog/confirm-dialog';
 import { ApiService } from '../../lib/api.service';
 import { CollectionRequest, CollectionResponse, FileData, Message, PaginationMeta } from '../../lib/types';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-ask',
@@ -48,7 +49,10 @@ export class Ask implements OnInit {
   ngOnInit(): void {
     this.updateMobile();
     if (this.isMobile) this.sidebarCollapsed = true;
-    this.loadCollections();
+    // Solo en el navegador para que la petición salga del cliente (y se vea en Network).
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadCollections();
+    }
   }
 
   @HostListener('window:resize')
@@ -69,27 +73,41 @@ export class Ask implements OnInit {
 
   /** Carga la página actual de colecciones para el sidebar. */
   loadCollections(): void {
-    this.api.getCollections(this.collectionsPage, this.collectionsPageSize).subscribe((res) => {
-      this.collections = res.items;
-      this.collectionsPagination = res.pagination;
-      // Restaurar colección activa desde sessionStorage (solo si está en la página actual)
-      if (isPlatformBrowser(this.platformId)) {
-        const savedId = sessionStorage.getItem('active_collection_id');
-        if (savedId) {
-          const found = this.collections.find((c) => c.id === savedId);
-          if (found) {
-            this.activeCollectionId = savedId;
-            this.activeCollectionData = found;
-            if (!found.is_public) {
-              this.unlockedCollectionIds = new Set(this.unlockedCollectionIds).add(savedId);
+    this.api.getCollections(this.collectionsPage, this.collectionsPageSize).subscribe({
+      next: (res) => {
+        const items = res.items ?? [];
+        if (!environment.production && items.length > 0) {
+          console.debug('[Ask] collections loaded:', items.length, 'items', items.map((c) => ({ id: c.id, name: c.name })));
+        }
+        this.collections = items;
+        this.collectionsPagination = res.pagination ?? {
+          page: this.collectionsPage,
+          page_size: this.collectionsPageSize,
+          total: this.collections.length,
+          total_pages: 1,
+        };
+        if (isPlatformBrowser(this.platformId)) {
+          const savedId = sessionStorage.getItem('active_collection_id');
+          if (savedId) {
+            const found = this.collections.find((c) => c.id === savedId);
+            if (found) {
+              this.activeCollectionId = savedId;
+              this.activeCollectionData = found;
+              if (!found.is_public) {
+                this.unlockedCollectionIds = new Set(this.unlockedCollectionIds).add(savedId);
+              }
+              this.loadCollectionDetails(savedId);
+            } else {
+              sessionStorage.removeItem('active_collection_id');
             }
-            this.loadCollectionDetails(savedId);
-          } else {
-            sessionStorage.removeItem('active_collection_id');
           }
         }
-      }
-      this.cdr.detectChanges();
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error loading collections:', err);
+        this.cdr.detectChanges();
+      },
     });
   }
 
