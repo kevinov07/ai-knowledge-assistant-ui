@@ -31,10 +31,41 @@
     <p class="text-xs text-muted-foreground">
       Supports PDF, DOC, DOCX, TXT, CSV, XLSX, MD ({{ files.length }}/{{ maxFiles }} files)
     </p>
+    @if (warningMessage) {
+      <p class="mt-2 text-xs text-destructive text-center">
+        {{ warningMessage }}
+      </p>
+    }
   </div>
 
-  <!-- Files List -->
-  @if (files.length > 0) {
+  <!-- Files List / Skeletons -->
+  @if (isLoading && files.length === 0) {
+    <!-- Skeleton list while collection documents are loading -->
+    <div class="space-y-2">
+      <div class="flex items-center justify-between">
+        <div class="h-4 w-40 rounded bg-secondary/60 animate-pulse"></div>
+        <div class="h-3 w-16 rounded bg-secondary/40 animate-pulse"></div>
+      </div>
+
+      <div class="grid gap-2 max-h-[240px] overflow-y-auto pr-1">
+        @for (s of [0, 1, 2, 3]; track s) {
+          <div class="flex items-center gap-3 rounded-lg bg-secondary/40 p-3 animate-pulse">
+            <!-- Icon placeholder -->
+            <div class="h-5 w-5 rounded bg-secondary/70"></div>
+
+            <!-- Text placeholder -->
+            <div class="flex-1 min-w-0 space-y-1">
+              <div class="h-3 w-40 rounded bg-secondary/80"></div>
+              <div class="h-2.5 w-24 rounded bg-secondary/60"></div>
+            </div>
+
+            <!-- Action placeholder -->
+            <div class="h-7 w-7 rounded-full bg-secondary/50"></div>
+          </div>
+        }
+      </div>
+    </div>
+  } @else if (files.length > 0) {
     <div class="space-y-2">
       <div class="flex items-center justify-between">
         <h3 class="text-sm font-medium text-foreground">
@@ -69,14 +100,21 @@
               </p>
             </div>
             
-            <!-- Remove Button -->
-            <button
-              type="button"
-              (click)="removeFile(file.id)"
-              class="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded flex items-center justify-center"
-              [attr.aria-label]="'Remove ' + file.filename">
-              <lucide-icon [img]="X" class="h-4 w-4"></lucide-icon>
-            </button>
+            <!-- Status / Remove Button -->
+            @if (file.file) {
+              <!-- While file has a local File (pending upload), show spinner instead of remove button -->
+              <div class="h-8 w-8 flex items-center justify-center text-muted-foreground">
+                <lucide-icon [img]="Loader" class="h-4 w-4 animate-spin" />
+              </div>
+            } @else {
+              <button
+                type="button"
+                (click)="removeFile(file.id)"
+                class="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded flex items-center justify-center"
+                [attr.aria-label]="'Remove ' + file.filename">
+                <lucide-icon [img]="X" class="h-4 w-4"></lucide-icon>
+              </button>
+            }
           </div>
         }
       </div>

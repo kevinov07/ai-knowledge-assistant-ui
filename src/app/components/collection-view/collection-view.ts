@@ -37,12 +37,19 @@ export class CollectionView {
   readonly ArrowLeft = ArrowLeft;
 
   @Input() collection!: Collection;
+  /** Loading state for chat requests. */
   @Input() isLoading = false;
+  /** Loading state for documents/messages of the current collection. */
+  @Input() isDetailsLoading = false;
+  /** Mensaje de estado de subida de archivos (éxito / error). */
+  @Input() uploadMessage: string | null = null;
+  @Input() uploadStatus: 'idle' | 'success' | 'error' = 'idle';
   @Output() updateCollection = new EventEmitter<Collection>();
   @Output() uploadRequest = new EventEmitter<File[]>();
   @Output() sendMessage = new EventEmitter<string>();
   @Output() back = new EventEmitter<void>();
   @Output() deleteDocument = new EventEmitter<string>();
+  @Output() deleteDocuments = new EventEmitter<string[]>();
 
   get files(): FileData[] {
     return this.collection.files ?? [];
@@ -75,5 +82,9 @@ export class CollectionView {
 
   onDeleteDocument(documentId: string): void {
     this.deleteDocument.emit(documentId);
+  }
+
+  onDeleteDocuments(documentIds: string[]): void {
+    this.deleteDocuments.emit(documentIds);
   }
 }

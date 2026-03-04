@@ -43,6 +43,7 @@ export class CollectionsSidebar {
   /** En móvil con overlay, el sidebar ocupa todo el ancho. */
   @Input() isMobileOverlay = false;
   @Input() pagination: PaginationMeta | null = null;
+  @Input() isLoading = false;
   @Output() toggleCollapse = new EventEmitter<void>();
   @Output() selectCollection = new EventEmitter<Collection>();
   @Output() createCollection = new EventEmitter<void>();
