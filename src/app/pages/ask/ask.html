@@ -1,4 +1,4 @@
-<div class="flex h-screen min-h-0 bg-background overflow-hidden relative">
+<div class="flex h-screen min-h-0 bg-background overflow-x-hidden relative">
   <!-- Sidebar: en móvil es overlay a pantalla completa; en desktop va al lado -->
   <div
     class="flex h-full shrink-0 transition-[transform] duration-300 ease-out z-50 md:z-auto md:transition-none"
@@ -12,6 +12,7 @@
       [isCollapsed]="sidebarCollapsed"
       [isMobileOverlay]="isMobile && !sidebarCollapsed"
       [pagination]="collectionsPagination"
+      [isLoading]="isLoadingCollections"
       (toggleCollapse)="onToggleSidebar()"
       (goHome)="onGoHome()"
       (selectCollection)="onSelectCollection($event)"
@@ -23,7 +24,7 @@
 
   <!-- Contenido principal: en móvil se oculta cuando el sidebar está abierto -->
   <div
-    class="flex min-h-0 flex-1 flex-col min-w-0 overflow-y-auto overflow-x-hidden relative main-content-scroll"
+    class="flex flex-1 flex-col min-w-0 overflow-x-hidden relative main-content-scroll"
     [class.hidden]="isMobile && !sidebarCollapsed"
     [class.pt-14]="isMobile && sidebarCollapsed">
     <!-- Botón menú: fixed en la esquina; sin pl-14 para que el contenido quede centrado en toda la pantalla -->
@@ -44,15 +45,20 @@
       <app-collection-view
         [collection]="activeCollection"
         [isLoading]="isLoading"
+        [isDetailsLoading]="isLoadingCollectionDetails"
+        [uploadStatus]="uploadStatus"
+        [uploadMessage]="uploadMessage"
         (updateCollection)="onUpdateCollection($event)"
         (uploadRequest)="onUploadFiles($event)"
         (sendMessage)="onAskQuestion($event)"
         (back)="onBack()"
-        (deleteDocument)="onDeleteDocument($event)">
+        (deleteDocument)="onDeleteDocument($event)"
+        (deleteDocuments)="onDeleteDocuments($event)">
       </app-collection-view>
     } @else {
       <app-welcome-view
         [collections]="collections"
+        [isLoading]="isLoadingCollections"
         (selectCollection)="onSelectCollection($event)"
         (createCollection)="onCreateCollection()">
       </app-welcome-view>

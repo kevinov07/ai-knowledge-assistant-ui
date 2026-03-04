@@ -19,6 +19,8 @@ export class WelcomeView {
   readonly Plus = Plus;
 
   @Input() collections: CollectionResponse[] = [];
+  /** Indicates that collections are being fetched on app start. */
+  @Input() isLoading = false;
   @Output() selectCollection = new EventEmitter<CollectionResponse>();
   @Output() createCollection = new EventEmitter<void>();
 

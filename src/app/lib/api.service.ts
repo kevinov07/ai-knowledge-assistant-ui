@@ -211,17 +211,31 @@ export class ApiService {
   }
 
   /**
-   * Elimina un documento específico de una colección.
-   * DELETE /collections/{collection_id}/documents/{document_id}
+   * Elimina uno o varios documentos de una colección usando el endpoint batch.
+   * DELETE /collections/{collection_id}/documents con cuerpo { document_ids: [...] }.
    * Solo envía token si la colección NO es pública.
    */
-  deleteDocument(collectionId: string, documentId: string, isPublic?: boolean): Observable<void> {
+  deleteDocuments(collectionId: string, documentIds: string[], isPublic?: boolean): Observable<void> {
     const token = !isPublic ? this.getAccessToken(collectionId) : null;
     const headers = token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined;
-    return this.http.delete<void>(
-      `${this.apiUrl}/collections/${collectionId}/documents/${documentId}`,
-      headers ? { headers } : undefined
-    );
+    const options: any = {
+      body: { document_ids: documentIds },
+    };
+    if (headers) {
+      options.headers = headers;
+    }
+    // Usamos request para asegurarnos de poder enviar body en DELETE en todos los navegadores soportados.
+    return this.http
+      .request<void>('DELETE', `${this.apiUrl}/collections/${collectionId}/documents`, options)
+      .pipe(map(() => void 0));
+  }
+
+  /**
+   * Elimina un único documento de una colección reutilizando el endpoint batch.
+   * Mantiene compatibilidad con el resto del código.
+   */
+  deleteDocument(collectionId: string, documentId: string, isPublic?: boolean): Observable<void> {
+    return this.deleteDocuments(collectionId, [documentId], isPublic);
   }
 
   /**

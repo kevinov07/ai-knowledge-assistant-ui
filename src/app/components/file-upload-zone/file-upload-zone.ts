@@ -2,7 +2,7 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FileData } from '../../lib/types';
 
-import { LucideAngularModule, Upload, FileText, X, File, FileSpreadsheet, FileImage } from "lucide-angular";
+import { LucideAngularModule, Upload, FileText, X, File, FileSpreadsheet, FileImage, Loader } from "lucide-angular";
 
 @Component({
   selector: 'app-file-upload-zone',
@@ -16,16 +16,25 @@ export class FileUploadZone {
   readonly File = File;
   readonly FileSpreadsheet = FileSpreadsheet;
   readonly FileImage = FileImage;
+  readonly Loader = Loader;
 
 
   @Input() files: FileData[] = [];
+  /** Indica que los documentos de la colección se están cargando desde el backend. */
+  @Input() isLoading = false;
   @Output() filesChange = new EventEmitter<FileData[]>();
   /** Se emite cuando se quiere eliminar un documento que ya existe en el backend (sin .file local). */
   @Output() deleteDocument = new EventEmitter<string>();
+  /** Se emite cuando se quieren eliminar varios documentos existentes en el backend (clear all). */
+  @Output() deleteDocuments = new EventEmitter<string[]>();
   @Input() maxFiles = 10;
   @Input() acceptedTypes = ['.pdf', '.doc', '.docx', '.txt', '.csv', '.xlsx', '.md'];
 
   isDragging = false;
+  /** Mensaje de advertencia para tamaño o límite de archivos. */
+  warningMessage: string | null = null;
+  /** Tamaño máximo por archivo: 10 MB. */
+  private readonly maxFileSizeBytes = 10 * 1024 * 1024;
 
   /** type puede ser extensión (docx, pdf) o MIME (application/pdf). */
   getFileIcon(type: string) {
@@ -99,8 +108,43 @@ export class FileUploadZone {
   }
 
   addFiles(newFiles: File[]): void {
+    if (newFiles.length === 0) return;
+
     const remainingSlots = this.maxFiles - this.files.length;
-    const filesToAdd = newFiles.slice(0, remainingSlots).map((file) => ({
+    if (remainingSlots <= 0) {
+      // Ya se alcanzó el máximo de documentos en la colección.
+      this.warningMessage = `Solo puedes tener hasta ${this.maxFiles} documentos en la colección.`;
+      return;
+    }
+
+    const accepted: File[] = [];
+    const rejectedBySize: string[] = [];
+
+    for (const file of newFiles) {
+      if (file.size > this.maxFileSizeBytes) {
+        rejectedBySize.push(file.name);
+        continue;
+      }
+      if (accepted.length >= remainingSlots) {
+        break;
+      }
+      accepted.push(file);
+    }
+
+    if (rejectedBySize.length > 0) {
+      this.warningMessage =
+        rejectedBySize.length === 1
+          ? `El archivo "${rejectedBySize[0]}" supera el máximo de 10 MB y no se ha añadido.`
+          : `Algunos archivos superan el máximo de 10 MB y no se han añadido.`;
+    } else {
+      this.warningMessage = null;
+    }
+
+    if (accepted.length === 0) {
+      return;
+    }
+
+    const filesToAdd = accepted.map((file) => ({
       id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       filename: file.name,
       size: file.size,
@@ -130,6 +174,10 @@ export class FileUploadZone {
   }
 
   clearAll(): void {
+    const backendIds = this.files.filter((f) => !f.file).map((f) => f.id);
+    if (backendIds.length > 0) {
+      this.deleteDocuments.emit(backendIds);
+    }
     this.filesChange.emit([]);
   }
 

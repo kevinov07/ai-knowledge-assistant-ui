@@ -31,6 +31,13 @@ import { environment } from '../../../environments/environment';
 export class Ask implements OnInit {
   collections: CollectionResponse[] = [];
   isLoading = false;
+  /** Loading state for collections (sidebar + welcome view). */
+  isLoadingCollections = false;
+  /** Loading state for documents/messages of the active collection. */
+  isLoadingCollectionDetails = false;
+  /** Notificación de estado para subidas de documentos de la colección activa. */
+  uploadStatus: 'idle' | 'success' | 'error' = 'idle';
+  uploadMessage: string | null = null;
 
   /** Paginación de colecciones (sidebar) */
   collectionsPage = 1;
@@ -73,6 +80,7 @@ export class Ask implements OnInit {
 
   /** Carga la página actual de colecciones para el sidebar. */
   loadCollections(): void {
+    this.isLoadingCollections = true;
     this.api.getCollections(this.collectionsPage, this.collectionsPageSize).subscribe({
       next: (res) => {
         const items = res.items ?? [];
@@ -102,10 +110,12 @@ export class Ask implements OnInit {
             }
           }
         }
+        this.isLoadingCollections = false;
         this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Error loading collections:', err);
+        this.isLoadingCollections = false;
         this.cdr.detectChanges();
       },
     });
@@ -161,6 +171,8 @@ export class Ask implements OnInit {
     if (!base) return;
 
     const isPublic = base.is_public ?? false;
+    this.isLoadingCollectionDetails = true;
+    this.cdr.detectChanges();
 
     forkJoin({
       files: this.api.getCollectionDocuments(collectionId, isPublic),
@@ -185,10 +197,12 @@ export class Ask implements OnInit {
           updated.message_count = base.message_count ?? 0;
         }
         this.onUpdateCollection(updated);
+        this.isLoadingCollectionDetails = false;
         this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Error loading collection details:', err);
+        this.isLoadingCollectionDetails = false;
         this.cdr.detectChanges();
       },
     });
@@ -325,6 +339,7 @@ export class Ask implements OnInit {
   onBack(): void {
     this.activeCollectionId = null;
     this.activeCollectionData = null;
+    this.isLoadingCollectionDetails = false;
     if (this.isMobile) this.sidebarCollapsed = true;
     if (isPlatformBrowser(this.platformId)) {
       sessionStorage.removeItem('active_collection_id');
@@ -337,6 +352,7 @@ export class Ask implements OnInit {
     this.pendingPrivateCollection = null;
     this.privateCodeError = null;
     this.isUnlocking = false;
+    this.isLoadingCollectionDetails = false;
     if (this.isMobile) this.sidebarCollapsed = true;
     if (isPlatformBrowser(this.platformId)) {
       sessionStorage.removeItem('active_collection_id');
@@ -348,6 +364,10 @@ export class Ask implements OnInit {
     if (files.length === 0) return;
     const current = this.activeCollection;
     if (!current) return;
+
+    // Reiniciar notificación antes de una nueva subida
+    this.uploadStatus = 'idle';
+    this.uploadMessage = null;
 
     const isPublic = current.is_public ?? false;
     this.api.uploadFiles(files, current.id, isPublic).subscribe({
@@ -366,6 +386,12 @@ export class Ask implements OnInit {
           files: [...withoutTemp, ...newFiles],
           document_count: withoutTemp.length + newFiles.length,
         });
+        const uploadedCount = res.files_uploaded.length;
+        this.uploadStatus = 'success';
+        this.uploadMessage =
+          uploadedCount === 1
+            ? 'Document uploaded successfully.'
+            : `${uploadedCount} documents uploaded successfully.`;
         this.cdr.detectChanges();
       },
       error: () => {
@@ -375,6 +401,8 @@ export class Ask implements OnInit {
           files: withoutTemp,
           document_count: withoutTemp.length,
         });
+         this.uploadStatus = 'error';
+        this.uploadMessage = 'Error uploading documents. Please try again.';
         this.cdr.detectChanges();
       },
     });
@@ -459,9 +487,9 @@ export class Ask implements OnInit {
       return;
     }
 
-    // Llamar al backend para eliminar el documento
+    // Llamar al backend para eliminar el documento (batch con un solo ID)
     const isPublic = collection.is_public ?? false;
-    this.api.deleteDocument(collection.id, documentId, isPublic).subscribe({
+    this.api.deleteDocuments(collection.id, [documentId], isPublic).subscribe({
       next: () => {
         const updatedFiles = (collection.files ?? []).filter((f) => f.id !== documentId);
         this.onUpdateCollection({
@@ -473,6 +501,29 @@ export class Ask implements OnInit {
       },
       error: (err) => {
         console.error('Error deleting document:', err);
+      },
+    });
+  }
+
+  /** Elimina varios documentos (por ejemplo, desde "Clear all"). */
+  onDeleteDocuments(documentIds: string[]): void {
+    const collection = this.activeCollection;
+    if (!collection || documentIds.length === 0) return;
+
+    const isPublic = collection.is_public ?? false;
+    this.api.deleteDocuments(collection.id, documentIds, isPublic).subscribe({
+      next: () => {
+        const toDelete = new Set(documentIds);
+        const updatedFiles = (collection.files ?? []).filter((f) => !toDelete.has(f.id));
+        this.onUpdateCollection({
+          ...collection,
+          files: updatedFiles,
+          document_count: updatedFiles.length,
+        });
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error deleting documents:', err);
       },
     });
   }
@@ -517,7 +568,7 @@ export class Ask implements OnInit {
 
             case 'delete-document':
               if (documentId) {
-                this.api.deleteDocument(collection.id, documentId, false).subscribe({
+                this.api.deleteDocuments(collection.id, [documentId], false).subscribe({
                   next: () => {
                     const current = this.collections.find((c) => c.id === collection.id);
                     if (current) {

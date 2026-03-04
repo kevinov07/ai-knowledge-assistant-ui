@@ -29,6 +29,12 @@ En el welcome wiew en vez de decir your collections deberia decir algo como popu
     - `.csv`
     - Otros formatos relevantes
 
+### Implementar barra deslizante en mobile
+
+  - Para la vista de mobile permitir que se deslice la barra lateral, no necesariamente darle al boton para que aparesca.
+
+### Implementar el borrado de documentos
+
 ### 📚 Sistema de Colecciones
 
 - [ ] **Colecciones de documentos**
